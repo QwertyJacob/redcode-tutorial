@@ -1,0 +1,178 @@
+<!-- title: 1 · La memoria e il processo — Redcode da −10000 a eroe | description: Che cos'è Core War, la memoria ad anello, che cosa c'è in una casella, e il processo che esegue un'istruzione alla volta. -->
+<div class="col">
+<div class="kicker">Capitolo 1 · livello −10000</div>
+<h1>La memoria e il processo</h1>
+<p class="lead">Tutto quello che succede in Landlord War succede dentro una sola memoria, dove vivono insieme tutti i programmi. Per capire gli attacchi servono tre idee: la memoria è un anello di caselle, ogni casella contiene un'istruzione, e un programma è vivo finché ha almeno un «dito» che legge le sue istruzioni.</p>
+
+<h2>Core War in una frase</h2>
+<p>Core War è un gioco del 1984 (A. K. Dewdney, su <i>Scientific American</i>). Due o più programmi, chiamati <b>guerrieri</b>, vengono messi nella stessa memoria. A turno eseguono un'istruzione ciascuno. Ognuno cerca di far «morire» gli altri, per esempio scrivendo spazzatura sopra il loro codice. I programmi si scrivono in <b>Redcode</b>, un linguaggio macchina giocattolo con 16 istruzioni.</p>
+<p><b>Landlord War</b> usa la stessa macchina, ma cambia il gioco. Uno dei programmi è un <b>servizio</b> che lavora per altri programmi onesti. <b>Red</b> è un programma che lo attacca. <b>Blue</b> non scrive programmi: scrive le <b>leggi della macchina</b>, cioè le regole su chi può scrivere, leggere o saltare dove. Blue è il padrone di casa (<i>landlord</i>), i programmi sono i suoi inquilini. Ci arriviamo nel capitolo 6. Prima bisogna capire la macchina.</p>
+
+<h2>Un anello di 8000 caselle</h2>
+<p>La memoria si chiama <b>core</b>. È una fila di 8000 <b>caselle</b> (dette anche celle), numerate da 0 a 7999. Il numero di una casella è il suo <b>indirizzo</b>. La fila è chiusa ad anello: dopo la casella 7999 viene di nuovo la 0, come sul quadrante di un orologio dopo le 12 viene l'1.</p>
+</div>
+
+<div class="col"><div class="figure">
+<svg viewBox="0 0 720 300" role="img" aria-label="La memoria come anello di 8000 caselle">
+  <defs><marker id="ar1" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="var(--accent)"/></marker></defs>
+  <circle cx="150" cy="150" r="110" fill="none" stroke="var(--line2)" stroke-width="22"/>
+  <g font-family="var(--mono)" font-size="13" fill="var(--ink2)" text-anchor="middle">
+    <text x="150" y="22">0</text><text x="282" y="155">2000</text><text x="150" y="292">4000</text><text x="20" y="155">6000</text>
+  </g>
+  <g stroke="var(--ink3)" stroke-width="2"><line x1="150" y1="29" x2="150" y2="51"/><line x1="249" y1="150" x2="271" y2="150"/><line x1="150" y1="249" x2="150" y2="271"/><line x1="29" y1="150" x2="51" y2="150"/></g>
+  <path d="M 112 47 A 110 110 0 0 1 142 41" fill="none" stroke="var(--accent)" stroke-width="3" marker-end="url(#ar1)"/>
+  <text x="96" y="64" font-size="12" fill="var(--accent)" text-anchor="end">7999 → 0</text>
+  <text x="150" y="146" text-anchor="middle" font-size="15" font-weight="700" fill="var(--ink)">core</text>
+  <text x="150" y="166" text-anchor="middle" font-size="12" fill="var(--ink3)">8000 caselle</text>
+  <g font-family="var(--mono)" font-size="12">
+    <text x="340" y="70" fill="var(--ink3)" font-family="var(--font)">vista da vicino, intorno alla casella 0:</text>
+    <g transform="translate(340,84)">
+      <rect x="0" y="0" width="60" height="44" rx="5" fill="var(--panel)" stroke="var(--line2)"/><text x="30" y="27" text-anchor="middle" fill="var(--ink2)">7997</text>
+      <rect x="62" y="0" width="60" height="44" rx="5" fill="var(--panel)" stroke="var(--line2)"/><text x="92" y="27" text-anchor="middle" fill="var(--ink2)">7998</text>
+      <rect x="124" y="0" width="60" height="44" rx="5" fill="var(--panel)" stroke="var(--line2)"/><text x="154" y="27" text-anchor="middle" fill="var(--ink2)">7999</text>
+      <rect x="186" y="0" width="60" height="44" rx="5" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="216" y="27" text-anchor="middle" fill="var(--ink)" font-weight="700">0</text>
+      <rect x="248" y="0" width="60" height="44" rx="5" fill="var(--panel)" stroke="var(--line2)"/><text x="278" y="27" text-anchor="middle" fill="var(--ink2)">1</text>
+      <rect x="310" y="0" width="60" height="44" rx="5" fill="var(--panel)" stroke="var(--line2)"/><text x="340" y="27" text-anchor="middle" fill="var(--ink2)">2</text>
+    </g>
+    <text x="340" y="160" fill="var(--ink2)" font-family="var(--font)" font-size="14">Non c'è un bordo: un programma che va sempre avanti</text>
+    <text x="340" y="180" fill="var(--ink2)" font-family="var(--font)" font-size="14">gira intorno all'anello e torna dove era partito.</text>
+    <text x="340" y="212" fill="var(--ink2)" font-family="var(--font)" font-size="14">Per lo stesso motivo −1 e 7999 indicano la stessa</text>
+    <text x="340" y="232" fill="var(--ink2)" font-family="var(--font)" font-size="14">casella: un passo indietro da 0 è 7999.</text>
+  </g>
+</svg>
+</div></div>
+
+<div class="col">
+<h2>Che cosa c'è in una casella</h2>
+<p>Ogni casella contiene esattamente <b>un'istruzione</b> di Redcode. Un'istruzione ha quattro parti:</p>
+<div style="text-align:center">
+<span class="cellpic"><span class="p-op">MOV<small>istruzione</small></span><span class="p-mod">.I<small>modificatore</small></span><span class="p-a">$0<small>campo A</small></span><span class="p-b">$1<small>campo B</small></span></span>
+</div>
+<ul>
+<li><b>L'istruzione</b> (in inglese <i>opcode</i>): che cosa fare. <code>MOV</code> vuol dire «copia», <code>ADD</code> «somma», <code>JMP</code> «salta», e così via. Sono 16.</li>
+<li><b>Il modificatore</b>, dopo il punto: su quale parte lavorare. <code>.I</code> vuol dire «l'istruzione intera». Lo vediamo nel capitolo 4.</li>
+<li><b>Il campo A</b> e <b>il campo B</b>: due numeri, ciascuno con un simbolo davanti (<code>$</code>, <code>#</code>, <code>@</code>, …) che dice come usarlo. In genere A è la sorgente e B la destinazione: <code>MOV A, B</code> copia A in B.</li>
+</ul>
+<p>In tutto il tutorial il campo <span class="fa-t">A</span> è sempre <span class="fa-t">arancione</span> e il campo <span class="fb-t">B</span> sempre <span class="fb-t">blu</span>. Il modificatore è <span class="mod-t">viola</span>, le etichette (i nomi delle righe) sono <span class="lbl-t">verdi</span>.</p>
+
+<h3>I dati sono istruzioni anche loro</h3>
+<p>In Redcode non esiste una memoria a parte per i dati. Se un programma vuole tenere da parte un numero, lo mette nel campo di una casella. Di solito usa una casella con l'istruzione <code>DAT</code>, che serve proprio a questo: contiene due numeri e non fa nient'altro.</p>
+<pre class="rc">
+count   DAT.F   #0, #5      ; una "variabile": il campo A vale 0, il campo B vale 5
+</pre>
+<p>Una casella che nessuno ha mai scritto contiene <code>DAT.F $0, $0</code>: un <code>DAT</code> con due zeri. In questo simulatore la vedrai in grigio. (In molti testi di Core War la casella vuota si scrive <code>DAT #0, #0</code>: è la stessa cosa, cambia solo il simbolo davanti agli zeri.)</p>
+
+<div class="box idea"><span class="t">Codice e dati vivono negli stessi posti</span>
+Questo è il punto da cui nasce quasi ogni attacco. Una casella che contiene un dato si può eseguire come se fosse codice, e una casella di codice si può sovrascrivere come se fosse un dato. Nelle macchine vere succede lo stesso: memoria è memoria.</div>
+
+<h2>Il processo: un dito che legge</h2>
+<p>Un programma, da solo, è solo una fila di caselle. Diventa vivo quando ha un <b>processo</b>: immagina un dito appoggiato su una casella. A ogni turno il dito:</p>
+<ol class="steps">
+<li>esegue l'istruzione della casella su cui sta;</li>
+<li>passa alla casella successiva (a meno che l'istruzione fosse un salto: allora va dove dice il salto).</li>
+</ol>
+<p>La posizione del dito si chiama <b>program counter</b>. Nei simulatori la vedi come un triangolino ▶ colorato accanto alla casella che verrà eseguita al prossimo turno.</p>
+<p>C'è una regola che conta più di tutte: <b>un processo che esegue un <code>DAT</code> muore</b>. <code>DAT</code> è un dato, non un'istruzione da eseguire, e la macchina punisce chi ci prova. Un programma senza più processi è morto.</p>
+
+<h3>Prova: un contatore</h3>
+<p>Tre caselle. La prima aggiunge 1 al campo B di <code>count</code>, la seconda torna alla prima. Il processo gira in tondo per sempre e <code>count</code> sale. Premi <b>Passo</b> qualche volta e leggi la spiegazione a destra.</p>
+</div>
+
+<div class="wide">
+<div class="msim" data-size="10" data-title="Un contatore" data-vars="count">
+<script type="text/redcode" data-name="Conta" data-base="2" data-color="t1">
+start   ADD.AB  #1, count     ; aggiunge 1 al campo B di count
+        JMP     start         ; torna alla riga start
+count   DAT.F   #0, #0        ; il numero che sale
+</script>
+</div>
+</div>
+
+<div class="col">
+<p>Due cose da notare, perché torneranno sempre:</p>
+<ul>
+<li>Il processo non si ferma mai da solo. Un programma Redcode non ha una fine: o gira per sempre, o muore.</li>
+<li>La casella <code>count</code> contiene un <code>DAT</code>, ma il processo non ci arriva mai, perché il <code>JMP</code> lo rimanda indietro prima. Se ci arrivasse, morirebbe.</li>
+</ul>
+
+<h3>Prova: un processo che muore</h3>
+<p>Qui non c'è nessun salto. Il processo esegue due <code>NOP</code> («nessuna operazione»), poi arriva sul <code>DAT</code>.</p>
+</div>
+
+<div class="wide">
+<div class="msim" data-size="8" data-title="Un processo che finisce su un DAT">
+<script type="text/redcode" data-name="Ingenuo" data-base="1" data-color="t3">
+        NOP                   ; non fa niente
+        NOP                   ; non fa niente
+        DAT.F   #0, #0        ; un dato: chi lo esegue muore
+</script>
+</div>
+</div>
+
+<div class="col">
+<p>Ecco perché in Core War si «bombarda»: scrivere un <code>DAT</code> nel codice di un altro programma lo uccide appena il suo processo arriva lì. È l'attacco R0.1 del lineage, e lo vedremo nel capitolo 9 contro il servizio.</p>
+
+<h2>L'Imp: un programma di una riga</h2>
+<p>Il programma più famoso di Core War è lungo una sola istruzione:</p>
+<pre class="rc">
+imp     MOV.I   $0, $1        ; copia questa casella nella casella dopo
+</pre>
+<p><code>$0</code> vuol dire «questa casella», <code>$1</code> «la casella dopo» (nel capitolo 2 vediamo perché). Quindi l'istruzione copia se stessa nella casella successiva. Poi il processo passa alla casella successiva, dove adesso c'è… una copia della stessa istruzione. Che si copia ancora un passo avanti. L'Imp cammina lungo l'anello per sempre, lasciandosi dietro una scia di copie di sé.</p>
+</div>
+
+<div class="wide">
+<div class="msim" data-size="12" data-title="L'Imp gira intorno all'anello">
+<script type="text/redcode" data-name="Imp" data-base="2" data-color="red">
+imp     MOV.I   $0, $1        ; copia questa casella nella casella dopo
+</script>
+</div>
+</div>
+
+<div class="col">
+<div class="box try"><span class="t">Prova tu</span>
+Premi <b>▶▶ avvia</b> e guarda l'Imp arrivare alla casella 11. Il passo dopo va alla casella 0: l'anello non ha bordo.</div>
+
+<h2>Più programmi: un'istruzione a testa, a turno</h2>
+<p>Quando nella memoria ci sono più programmi, la macchina li fa lavorare a turno: un'istruzione al primo, un'istruzione al secondo, e così via, poi si ricomincia. Un giro completo si chiama <b>ciclo</b>. Una battaglia di Landlord War dura 20.000 cicli.</p>
+<p>Qui sotto ci sono il contatore e l'Imp nello stesso anello di 12 caselle. L'Imp cammina in avanti e prima o poi arriva sulle caselle del contatore. Che cosa succede?</p>
+</div>
+
+<div class="wide">
+<div class="msim" data-size="12" data-title="Il contatore e l'Imp nello stesso anello" data-vars="count">
+<script type="text/redcode" data-name="Conta" data-base="1" data-color="t1">
+start   ADD.AB  #1, count
+        JMP     start
+count   DAT.F   #0, #0
+</script>
+<script type="text/redcode" data-name="Imp" data-base="7" data-color="red">
+imp     MOV.I   $0, $1
+</script>
+</div>
+</div>
+
+<div class="col">
+<details class="more"><summary>Che cosa succede (leggilo dopo aver provato)</summary>
+<p>L'Imp copia la sua istruzione sopra le caselle del contatore, una dopo l'altra. Appena copre la casella su cui sta il processo del contatore, quel processo esegue <code>MOV.I $0, $1</code>: anche lui è diventato un Imp. Il contatore non muore, ma non conta più: ora ci sono due Imp che si inseguono. Nessuno ha «ucciso» nessuno, eppure il programma onesto ha smesso di fare il suo lavoro.</p>
+<p>In Landlord War questo conta molto: il servizio non deve solo restare vivo, deve continuare a servire richieste. L'arbitro misura il lavoro fatto, non solo chi è vivo.</p>
+</details>
+
+<div class="quiz"><div class="q">Un processo esegue la casella che contiene <code>DAT.F #0, #0</code>. Che cosa succede?</div>
+<button class="opt">Non succede niente e passa alla casella dopo.</button>
+<button class="opt" data-right>Il processo muore.</button>
+<button class="opt">Salta alla casella 0.</button>
+<div class="why"><code>DAT</code> è un dato. Eseguirlo uccide il processo. È l'idea su cui si basano tutte le bombe.</div></div>
+
+<div class="quiz"><div class="q">La memoria ha 8000 caselle. Un processo è sulla casella 7999 ed esegue un'istruzione che non salta. Dove va?</div>
+<button class="opt">Muore, perché è finita la memoria.</button>
+<button class="opt">Alla casella 8000.</button>
+<button class="opt" data-right>Alla casella 0.</button>
+<div class="why">La memoria è un anello: dopo 7999 viene 0. Non c'è una casella 8000.</div></div>
+
+<div class="box recap"><span class="t">In breve</span>
+<ul>
+<li>Il core è un anello di 8000 caselle; dopo 7999 viene 0.</li>
+<li>Ogni casella contiene un'istruzione: operazione, modificatore, campo A, campo B. I dati sono numeri dentro i campi, di solito in caselle <code>DAT</code>.</li>
+<li>Un processo esegue un'istruzione per turno e poi passa alla casella dopo, salvo salti. Se esegue un <code>DAT</code> muore.</li>
+<li>Più programmi eseguono un'istruzione ciascuno a turno; un giro è un ciclo.</li>
+</ul></div>
+</div>

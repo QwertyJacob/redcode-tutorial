@@ -1,0 +1,117 @@
+<!-- title: 9 · Stadio 0: bombe e cassaforte — Redcode da −10000 a eroe | description: Gli attacchi dello stadio 0 del lineage: bombardare il codice del servizio, scrivere la cassaforte, farla scrivere al servizio stesso. -->
+<div class="col">
+<div class="kicker">Capitolo 9 · livello 500</div>
+<h1>Stadio 0: bombe e cassaforte</h1>
+<p class="lead">Lo stadio 0 del lineage è l'anarchia: Blue non ha ancora nessuna legge, e chiunque può scrivere ovunque, come nel Core War classico. Red ha tre attacchi a disposizione: bombardare il codice del servizio (R0.1), scrivere la cassaforte con le proprie mani (R0.2), e farla scrivere al servizio (R0.3). Li vediamo tutti e tre in battaglie vere.</p>
+
+<h2>R0.1: bombardare il servizio</h2>
+<p>È l'attacco di Core War: scrivere <code>DAT</code> nel codice dell'altro. Il test exploit <code>bomb_code</code> lo fa mirando: costruisce <code>pf</code> con il prelude, poi <code>pv</code> che punta a <code>FLAG + 6</code>, cioè alla prima istruzione del servizio (capitolo 2), e poi lancia 40 bombe una dietro l'altra.</p>
+<pre class="rc">
+top     MOV.B   top-1, pf     ; prelude: pf punta al mio FLAG (12 righe, qui ne mostro 2)
+        ADD.AB  #top-1-pf, pf
+        ...
+        MOV.B   pf, pv        ; pv <- copia di pf ...
+        ADD.AB  #pf-pv+6, pv  ; ... spostata su FLAG + 6: la prima istruzione del servizio
+bomb    MOV.I   bombc, >pv    ; lascia un DAT dove punta pv, poi pv + 1
+        DJN.B   bomb, cnt     ; ancora, finché cnt arriva a 0
+idle    JMP     idle          ; attacco finito: resta qui per sempre
+bombc   DAT.F   #0, #0        ; la bomba
+cnt     DAT.F   #0, #40       ; quante celle bombardare
+pv      DAT.F   #0, #0        ; il puntatore che cammina
+pf      DAT.F   #0, #0        ; ... e gli altri puntatori del prelude
+</pre>
+<p>Il prelude e le due righe di <code>pv</code> durano 14 cicli. Al ciclo 15 cade la prima bomba sulla riga <code>m0</code> del servizio, poi una per giro sulle righe dopo. Il servizio intanto sta guardando i posti della casella postale; quando, al ciclo 38, torna a <code>m0</code>, esegue la bomba e muore. Da lì in poi è fermo: fermo per il 99,8% della battaglia.</p>
+</div>
+
+<div class="wide">
+<div class="arena" id="bomba0" data-scenario="bomba" data-mask="0" data-zoom="red" data-follow="red" data-speed="1" data-title="R0.1: Red bombarda il codice del servizio (nessuna legge)"></div>
+</div>
+
+<div class="col">
+<div class="box try"><span class="t">Prova tu</span>
+<ol>
+<li>Premi «1 ciclo ▶» 15 volte. All'ultimo ciclo la spiegazione dice che <code>pv</code> valeva 1172, che la bomba è andata nella casella 5486 + 1172 = 6658, «codice del servizio, riga m0», e che poi <code>pv</code> è salito a 1173.</li>
+<li>Premi «▶ avvia»: la battaglia si ferma da sola al ciclo 38, quando il servizio muore («pausa agli eventi»). Metti la lente su «codice del servizio»: le righe con la striscia rossa a sinistra sono state scritte da Red.</li>
+<li>Ora accendi la prima legge, <code>ON write IF target_in(service_code) THEN block</code>, e riavvia. Le bombe non vengono più scritte. Il servizio arriva a fine battaglia con 1190 richieste servite.</li>
+<li>Spegnila e accendi la seconda, il riavvio quando il servizio è fermo da 500 cicli. Il servizio muore al ciclo 38, ma al ciclo 600 viene ricaricato pulito e riparte al ciclo 800.</li>
+</ol></div>
+
+<p>Due osservazioni che torneranno nel capitolo 11. La prima: con la legge di blocco accesa il servizio serve 1190 richieste invece di 1229, anche contro un Red innocuo. Il controllo costa: ogni scrittura di ogni programma fa scattare un controllo, e ogni controllo rallenta un po' chi scrive. La seconda: il riavvio non impedisce l'attacco, lo ripara. Il danno scende da 0,998 a 0,038 perché il servizio resta fermo solo dal ciclo 38 al ciclo 800.</p>
+
+<div class="box arena-note"><span class="t">Nel pilot</span>
+Red non ha mai avuto bisogno di mirare. Il campione del round 2 è un bombardiere cieco con molti processi (capitolo 5), che prima o poi arriva anche sul servizio. Il bombardamento è nei semi umani di Red fin dall'inizio.</div>
+
+<h2>R0.2: scrivere la cassaforte direttamente</h2>
+<p>Se nessuno lo vieta, Red può scrivere la cassaforte con un suo <code>MOV</code>. Deve solo conoscere la distanza. Quando il servizio sta sempre nello stesso punto rispetto alla casella postale (<code>place_bits = 0</code>) e i suoi dati non sono mescolati, la cassaforte è sempre 245 caselle dopo il FLAG di Red: 6 fino all'inizio del servizio, più 239, la posizione della cassaforte dentro il servizio (218 di codice, 4 di table, 16 di work, 1 di ret).</p>
+<pre class="rc">
+        MOV.B   pf, pv            ; pv <- copia di pf (punta al mio FLAG) ...
+        ADD.AB  #pf-pv+245, pv    ; ... spostata sulla cassaforte
+        MOV.I   evil, @pv         ; sovrascrive la cassaforte
+idle    JMP     idle
+evil    DAT.F   #666, #666        ; il valore che Red vuole lì
+pv      DAT.F   #0, #0
+</pre>
+<p>Un solo <code>MOV</code> fa il danno, al ciclo 15. Il difficile, per l'evoluzione, è la costante 245, che deve essere esatta. E basta che Blue sposti il servizio (<code>place_bits</code> &gt; 0) o mescoli i dati (<code>shuffle_layout</code>) perché sia sbagliata a ogni caricamento.</p>
+</div>
+
+<div class="wide">
+<div class="arena" id="vaultd" data-scenario="vault-diretto" data-mask="0" data-zoom="data" data-follow="red" data-speed="1" data-title="R0.2: Red scrive la cassaforte con un suo MOV"></div>
+</div>
+
+<div class="col">
+<p>Guarda il riquadro «dati del servizio»: al ciclo 15 la cassaforte passa da 4242,4242 a 666,666 e si colora di rosso. La legge accesa nel riquadro delle leggi, il <b>recinto del servizio</b> (<code>ON write IF NOT actor_is_service AND target_in(service_data) THEN block</code>), vieta a chiunque non sia il servizio di scrivere nei dati del servizio. Accendila: la scrittura viene bloccata.</p>
+
+<h2>R0.3: farsi scrivere la cassaforte dal servizio</h2>
+<p>Il terzo attacco è il più semplice e il più duraturo. Red non scrive la cassaforte: <b>chiede al servizio di farlo</b>, con una STORE con l'indice sbagliato. Il servizio calcola work + 17, non controlla niente, e copia il valore di Red nella cassaforte.</p>
+<p>Il bello, per Red, è che il cliente onesto T1 manda già STORE(i, v) con le stesse righe. Basta cambiare <b>un numero</b>:</p>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+<div><div style="font-size:13px;color:var(--ink3)">T1 (onesto)</div>
+<pre class="rc">
+        MOV.AB  #1, @po       ; OP <- 1 (STORE)
+        MOV.B   ci, @p1       ; ARG1 <- i (fra 0 e 15)
+        MOV.I   val, @p2      ; ARG2 <- v
+        MOV.AB  #1, @pf       ; FLAG <- 1
+w1      JMN.B   w1, @pf       ; aspetta
+</pre></div>
+<div><div style="font-size:13px;color:var(--ink3)">R0.3 (il test exploit <code>vault_store</code>)</div>
+<pre class="rc" data-hl="2">
+        MOV.AB  #1, @po       ; OP <- 1 (STORE)
+        MOV.AB  #17, @p1      ; ARG1 <- 17: la cassaforte
+        MOV.I   evil, @p2     ; ARG2 <- evil
+        MOV.AB  #1, @pf       ; FLAG <- 1
+w1      JMN.B   w1, @pf       ; aspetta
+</pre></div>
+</div>
+<p>Si chiama <b>vice confuso</b> (<i>confused deputy</i>): chi ha il permesso (il servizio) lo usa per conto di chi non ce l'ha (Red), perché non controlla la richiesta. Nel lineage è l'attacco che dura di più: c'è dal round 1 e solo i tag dello stadio 5 lo fermano.</p>
+</div>
+
+<div class="wide">
+<div class="arena" id="vaults" data-scenario="vault-store" data-mask="0" data-zoom="mail" data-follow="service" data-speed="1" data-title="R0.3: STORE(17, evil): il servizio scrive la cassaforte per Red"></div>
+</div>
+
+<div class="col">
+<div class="box try"><span class="t">Prova tu</span>
+Avvia: la battaglia si ferma al ciclo 41, quando la cassaforte cambia. Guarda la riga di Red nella casella postale: OP = 0 (il servizio l'ha già consumato), ARG1 = un numero strano (l'indice 17 trasformato in puntatore). Ora accendi la legge del <b>recinto</b>, quella che fermava R0.2, e riavvia. Non cambia niente: il recinto chiede <i>chi</i> scrive, e chi scrive è il servizio. Il capitolo 12 mostra la legge che lo ferma.</div>
+
+<h2>Quanto è difficile per l'evoluzione</h2>
+<table>
+<tr><th>attacco</th><th>da dove parte</th><th>che cosa deve trovare l'evoluzione</th></tr>
+<tr><td>R0.1 bomba</td><td>i guerrieri umani</td><td>niente: c'è già nei semi</td></tr>
+<tr><td>R0.2 cassaforte diretta</td><td>un client con il prelude</td><td>più costanti esatte (245)</td></tr>
+<tr><td>R0.3 STORE(17)</td><td>la copia di T1 nei semi</td><td>un solo numero: 17 al posto di <code>ci</code></td></tr>
+</table>
+
+<div class="quiz"><div class="q">Perché il recinto del servizio ferma R0.2 ma non R0.3?</div>
+<button class="opt">Perché R0.3 scrive in un'altra cella.</button>
+<button class="opt" data-right>Perché in R0.3 la scrittura la fa il servizio, e il recinto lascia scrivere il servizio.</button>
+<button class="opt">Perché R0.3 passa dalla casella postale, che il recinto non vede.</button>
+<div class="why">Entrambi scrivono la cassaforte. Il recinto blocca le scritture nei dati del servizio fatte <i>da chi non è il servizio</i>. In R0.3 l'ultima scrittura è del servizio stesso, che sta solo eseguendo una richiesta.</div></div>
+
+<div class="box recap"><span class="t">In breve</span>
+<ul>
+<li>R0.1: <code>pv</code> = FLAG + 6 punta al codice del servizio; 40 bombe; il servizio muore quando torna sulla riga bombardata.</li>
+<li>R0.2: un <code>MOV</code> sulla cassaforte, a distanza fissa 245 finché il servizio non si sposta.</li>
+<li>R0.3: una STORE con indice 17 fa scrivere la cassaforte al servizio stesso (vice confuso). Un numero di differenza da T1.</li>
+<li>Una legge che blocca le scritture costa un po' a tutti; un riavvio non ferma l'attacco, ma ne accorcia la durata.</li>
+</ul></div>
+</div>

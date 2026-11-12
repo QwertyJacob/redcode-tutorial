@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>6 · La mappa dell'arena — Redcode da −10000 a eroe</title>
+<meta name="description" content="Chi vive nelle 8000 celle di Landlord War: il servizio, la casella postale, cinque inquilini onesti, Red, e Blue che scrive le leggi.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' rx='3' fill='%23dc2b2b'/><rect x='3' y='3' width='4' height='4' fill='%23fff'/><rect x='9' y='9' width='4' height='4' fill='%23fff'/></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/style.css">
+<script src="assets/js/engine.js"></script>
+<script src="assets/js/ui-core.js"></script>
+<script src="assets/js/msim.js"></script>
+<script src="assets/js/arena.js"></script>
+<script src="assets/js/lawlab.js"></script>
+</head>
+<body>
+<div class="topbar" id="topbar"></div>
+<div class="site">
+<aside class="side" id="side"></aside>
+<main>
+<div class="col">
+<div class="kicker">Capitolo 6 · livello 0</div>
+<h1>La mappa dell'arena</h1>
+<p class="lead">Fin qui abbiamo giocato con anelli di poche decine di caselle. L'arena di Landlord War è lo stesso tipo di macchina, con 8000 caselle e sette programmi che girano insieme per 20.000 cicli. Questo capitolo presenta gli abitanti e insegna a leggere il visualizzatore che useremo da qui alla fine.</p>
+
+<h2>Gli abitanti</h2>
+<table>
+<tr><th></th><th>chi</th><th>che cosa fa</th></tr>
+<tr><td><i class="sw" style="background:var(--c-svc)"></i></td><td><b>il servizio</b></td><td>Un programma di 218 istruzioni che risponde alle richieste dei clienti, più i suoi dati (241 celle in tutto). È ciò che Blue protegge. Ha un solo processo: se muore, il servizio è fermo.</td></tr>
+<tr><td><i class="sw" style="background:var(--c-mail)"></i></td><td><b>la casella postale</b></td><td>36 celle del servizio, divise in 6 «posti» da 6 celle, uno per cliente. È qui che i clienti scrivono le richieste (capitolo 7).</td></tr>
+<tr><td><i class="sw" style="background:var(--c-t1)"></i> <i class="sw" style="background:var(--c-t2)"></i></td><td><b>T1, T2</b></td><td>Clienti onesti: T1 manda STORE e READ, T2 manda CALL. Controllano ogni risposta.</td></tr>
+<tr><td><i class="sw" style="background:var(--c-t3)"></i></td><td><b>T3</b></td><td>Un «JIT»: scrive due istruzioni nuove subito dopo il proprio codice e le esegue, come fa un motore JavaScript.</td></tr>
+<tr><td><i class="sw" style="background:var(--c-t4)"></i></td><td><b>T4</b></td><td>Lavora in una zona di 16 celle lontana da sé almeno 2000 celle: scrive un valore e lo rilegge.</td></tr>
+<tr><td><i class="sw" style="background:var(--c-t5)"></i></td><td><b>T5</b></td><td>Tiene vivi 8 processi con <code>SPL</code>: ognuno fa un piccolo lavoro, crea un sostituto e muore.</td></tr>
+<tr><td><i class="sw" style="background:var(--c-red)"></i></td><td><b>Red</b></td><td>Il programma evoluto che attacca, al massimo 100 istruzioni e 64 processi. Per la macchina è un inquilino come gli altri: nessuna legge può sapere chi è Red.</td></tr>
+</table>
+<p>E poi c'è <b>Blue</b>, che non compare nella memoria. Blue è il padrone di casa: non scrive un programma, sceglie le <b>leggi</b> che la macchina applica a ogni scrittura, lettura, esecuzione, salto e creazione di processo, più tre parametri di caricamento (dove mettere il servizio, in che ordine i suoi dati, quante celle sentinella). Le leggi valgono per tutti: se Blue vieta qualcosa per fermare Red, lo vieta anche agli inquilini onesti. Per questo T1–T5 esistono: ognuno si rompe con una certa famiglia di difese, e così ogni difesa ha un prezzo (capitolo 11).</p>
+
+<h2>Dove sta ognuno</h2>
+<p>A ogni battaglia il caricatore mette la casella postale in un punto a caso, il servizio subito dopo, e ogni altro programma in un punto a caso, ad almeno 100 celle da tutti gli altri. Davanti a ogni programma mette la sua directory cell. Ecco la disposizione della battaglia «bomba» del capitolo 9:</p>
+<div class="figure ringmap" data-scenario="bomba"></div>
+
+<h2>Che cosa vuole Red</h2>
+<p>L'arbitro (capitolo 13) guarda in ogni ciclo se il servizio è in uno di quattro stati cattivi. Sono gli obiettivi di Red, e le etichette colorate del lineage:</p>
+<ul>
+<li><b>Down</b> (servizio fermo): il servizio non ha più processi, o il suo contatore <code>progress</code> non sale da 500 cicli.</li>
+<li><b>Hijack per iniezione</b>: il servizio esegue una cella che Red ha cambiato. Red gli fa eseguire il proprio codice, con i permessi del servizio.</li>
+<li><b>Hijack per deviazione</b>: il servizio salta in un punto che il suo codice non prevede, anche se lì c'è codice suo.</li>
+<li><b>Vault</b>: la cassaforte, una cella con il valore 4242, ha cambiato valore.</li>
+</ul>
+<p>Il danno di una battaglia dipende da <i>quanto a lungo</i> il servizio resta in questi stati. Un attacco che riesce presto e dura tanto fa più danno.</p>
+
+<h2>Il visualizzatore dell'arena</h2>
+<p>Ecco una battaglia senza Red e senza leggi: solo il servizio e gli inquilini che lavorano. È il punto di riferimento: in 20.000 cicli il servizio serve 1229 richieste, T1 completa 307 lavori, T2 615, T3 2000, T4 2462 e T5 5000.</p>
+</div>
+
+<div class="wide">
+<div class="arena" id="quiete" data-scenario="quiete" data-mask="0" data-zoom="mail" data-follow="T1" data-speed="2" data-title="Un giorno normale: il servizio e gli inquilini, senza Red e senza leggi"></div>
+</div>
+
+<div class="col">
+<p>Come si legge, pezzo per pezzo:</p>
+<ul>
+<li><b>La mappa</b> a sinistra è il core intero: 100 caselle per riga, 80 righe, si legge come un libro (la casella 0 in alto a sinistra, la 7999 in basso a destra, e poi si ricomincia). Il colore dice di chi è la casella. I pallini sono i processi. Le caselle che cambiano durante l'ultimo fotogramma hanno un bordo giallo. Passa il mouse su una casella per leggerne il contenuto; cliccala per guardarla con la lente.</li>
+<li><b>La striscia</b> sotto la mappa è la storia della battaglia: ogni colonna è un pezzo di tempo, e si colora quando il servizio è in uno stato cattivo. Cliccala per saltare a un ciclo.</li>
+<li><b>Lavoro fatto</b>: le richieste servite e i lavori di ciascun inquilino, contati dalle righe <code>ok</code>.</li>
+<li><b>L'arbitro</b>: per ogni stato cattivo, la frazione dei cicli passati finora in quello stato, e il danno complessivo.</li>
+<li><b>Casella postale</b>: i sei posti, con il campo B di ogni cella. Una riga gialla è una richiesta in attesa (FLAG ≠ 0).</li>
+<li><b>Dati del servizio</b>: table, work, ret, la cassaforte (vault) e progress.</li>
+<li><b>Leggi di Blue</b>: qui sono spente. Nei prossimi capitoli le accenderemo.</li>
+<li><b>La lente</b>, in basso: 26 celle viste da vicino, con le etichette e un commento in italiano per ogni riga. «1 ciclo ▶» esegue un solo ciclo e spiega che cosa ha fatto il programma scelto in «spiega le istruzioni di».</li>
+</ul>
+
+<div class="box try"><span class="t">Prova tu</span>
+<ol>
+<li>Premi «▶ avvia» a velocità 1× e guarda la tabella della casella postale: le righe di T1 e T2 si accendono di giallo (richiesta pronta) e si spengono (risposta data).</li>
+<li>Metti in pausa. Con la lente su «casella postale» premi «1 ciclo ▶» più volte: vedrai T1 aspettare con <code>JMN.B</code> e il servizio guardare i posti uno dopo l'altro con <code>JMZ.B</code>.</li>
+<li>Premi «fine ⏭»: la battaglia va fino al ciclo 20.000 e il pannello in basso a destra conferma che il risultato è identico al motore Python.</li>
+</ol></div>
+
+<div class="box arena-note"><span class="t">Perché il servizio è così lungo</span>
+218 istruzioni sono tante per Redcode. Il motivo è che Redcode non ha registri, e il servizio non può tenere puntatori nel proprio codice (una legge come il code lock, che vieta di scrivere nel codice del servizio, lo romperebbe). Così il generatore scrive una copia del codice di risposta per ciascuno dei sei posti della casella postale: sei blocchi quasi uguali, più i gestori di CALL. Lo vediamo nel capitolo 8.</div>
+
+<div class="quiz"><div class="q">Blue vuole fermare Red. Quale di queste cose <i>non</i> può fare?</div>
+<button class="opt">Vietare a tutti di scrivere nel codice del servizio.</button>
+<button class="opt" data-right>Vietare solo a Red di scrivere nella casella postale.</button>
+<button class="opt">Mettere il servizio in un punto diverso a ogni caricamento.</button>
+<div class="why">Nessuna legge può distinguere Red dagli altri programmi. Una legge sulla casella postale colpirebbe anche T1 e T2, e il servizio non avrebbe più richieste da servire.</div></div>
+
+<div class="box recap"><span class="t">In breve</span>
+<ul>
+<li>Nel core di 8000 celle vivono il servizio con la sua casella postale, cinque inquilini onesti e Red.</li>
+<li>Blue non ha codice: sceglie le leggi della macchina e tre parametri di caricamento. Le leggi valgono per tutti.</li>
+<li>Red vuole: servizio fermo, iniezione, deviazione, cassaforte cambiata. Il danno si misura in durata.</li>
+<li>Senza Red, in 20.000 cicli il servizio serve 1229 richieste.</li>
+</ul></div>
+</div>
+
+<div class="col"><nav class="chapnav" id="chapnav"></nav>
+<p style="font-size:13px;color:var(--ink3);margin-top:30px">Tutorial per il progetto <code>cyber_kickoff</code> (LIUC). Il simulatore di queste pagine è il motore di Landlord War tradotto in JavaScript: dà gli stessi risultati, cella per cella.</p></div>
+</main>
+</div>
+</body>
+</html>

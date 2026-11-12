@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>2 · Distanze, non indirizzi — Redcode da −10000 a eroe</title>
+<meta name="description" content="L'idea che sblocca Redcode: ogni numero è una distanza dalla casella in cui sta. Etichette, puntatori, e perché un puntatore copiato va corretto.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' rx='3' fill='%23dc2b2b'/><rect x='3' y='3' width='4' height='4' fill='%23fff'/><rect x='9' y='9' width='4' height='4' fill='%23fff'/></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/style.css">
+<script src="assets/js/engine.js"></script>
+<script src="assets/js/ui-core.js"></script>
+<script src="assets/js/msim.js"></script>
+<script src="assets/js/arena.js"></script>
+<script src="assets/js/lawlab.js"></script>
+</head>
+<body>
+<div class="topbar" id="topbar"></div>
+<div class="site">
+<aside class="side" id="side"></aside>
+<main>
+<div class="col">
+<div class="kicker">Capitolo 2 · livello −5000</div>
+<h1>Distanze, non indirizzi</h1>
+<p class="lead">Se c'è una sola cosa da capire di Redcode, è questa: <b>un numero dentro un'istruzione non è mai un indirizzo. È una distanza, contata dalla casella in cui l'istruzione si trova.</b> Quasi tutta la confusione davanti a righe come <code>MOV.B pf, pv</code> viene da qui. Questo capitolo va piano, con molti esempi.</p>
+
+<h2>Indicazioni date a voce</h2>
+<p class="analogy">Se chiedi la strada in un paese, nessuno ti dice «via Roma 12». Ti dicono «tre portoni più avanti» o «due case indietro». Le indicazioni dipendono da dove sei tu in quel momento.</p>
+<p>Redcode funziona così. Nell'istruzione <code>MOV.I $3, $5</code>:</p>
+<ul>
+<li><span class="fa-t">$3</span> vuol dire «la casella 3 passi più avanti di me»;</li>
+<li><span class="fb-t">$5</span> vuol dire «la casella 5 passi più avanti di me».</li>
+</ul>
+<p>«Me» è la casella che contiene l'istruzione. Se l'istruzione sta nella casella 100, <code>$3</code> è la 103 e <code>$5</code> è la 105. Se la stessa istruzione sta nella 4000, <code>$3</code> è la 4003. I numeri negativi vanno indietro: <code>$-1</code> è la casella prima. <code>$0</code> è la casella stessa.</p>
+<p>Questo tipo di indirizzo si chiama <b>relativo</b>. In Redcode non esiste nessun modo di scrivere un indirizzo assoluto, cioè «la casella numero 4003». Un programma non sa nemmeno in quale casella è stato caricato.</p>
+
+<h3>Prova: passa il mouse sui numeri</h3>
+<p>Qui sotto lo stesso programma è caricato due volte, nelle caselle 1 e 12. Passa il mouse sui numeri <span class="fa-t">A</span> e <span class="fb-t">B</span> della prima riga di ciascuna copia: la freccia mostra la casella indicata. Poi premi <b>Passo</b> due volte.</p>
+</div>
+
+<div class="wide">
+<div class="msim" data-size="22" data-title="Lo stesso programma in due posti">
+<script type="text/redcode" data-name="Copia 1" data-base="1" data-color="t1">
+        MOV.I   $3, $5        ; copia la casella 3 passi avanti in quella 5 passi avanti
+        JMP     $0            ; poi resta qui (salta su se stesso)
+        NOP
+        DAT.F   #7, #7        ; la casella da copiare: 3 passi dopo la prima riga
+</script>
+<script type="text/redcode" data-name="Copia 2" data-base="12" data-color="t3">
+        MOV.I   $3, $5
+        JMP     $0
+        NOP
+        DAT.F   #7, #7
+</script>
+</div>
+</div>
+
+<div class="col">
+<p>Entrambe le copie fanno la stessa cosa, ciascuna intorno a sé: copiano il loro <code>DAT.F #7, #7</code> due caselle più in là. È per questo che in Core War i programmi si possono caricare in un punto qualsiasi: non c'è niente da aggiustare, perché nessun numero dipende dal punto di caricamento.</p>
+
+<div class="box idea"><span class="t">Perché è fatto così</span>
+In Landlord War il caricatore mette ogni programma in un punto scelto a caso, diverso a ogni battaglia. Con indirizzi assoluti, nessun programma funzionerebbe due volte. Con le distanze, funziona dappertutto. Il prezzo è che, per raggiungere un punto lontano che non conosce, un programma deve <b>farsi dire la distanza</b> da qualcuno. È quello che fa la «directory cell» (più sotto e nel capitolo 7).</div>
+
+<h2>Le etichette sono distanze travestite</h2>
+<p>Scrivere distanze a mano è scomodo e facile da sbagliare. Per questo Redcode permette di dare un nome alle righe, un'<b>etichetta</b>, e di usare il nome al posto del numero. Prima di caricare il programma, un traduttore (l'<b>assembler</b>) sostituisce ogni nome con la distanza giusta. Ecco la regola, che vale per ogni etichetta in ogni riga:</p>
+<div class="box"><b>Etichetta usata in una riga</b> = distanza da quella riga alla riga dell'etichetta.</div>
+<p>Quindi <b>la stessa etichetta diventa un numero diverso in ogni riga</b>. Guarda questo programma, che conta fino a 10 e poi si ferma su un salto a se stesso. Premi «mostra i numeri» per vedere che cosa scrive davvero l'assembler.</p>
+<pre class="rc" data-numbers>
+loop    ADD.AB  #1, count     ; count + 1
+        SNE.AB  #10, count    ; count è diverso da 10? allora salta la riga dopo
+        JMP     fine          ; count = 10: vai alla fine
+        JMP     loop          ; altrimenti ricomincia
+fine    JMP     fine          ; resta qui
+count   DAT.F   #0, #0        ; il contatore
+</pre>
+<table>
+<tr><th>riga</th><th>scritto con l'etichetta</th><th>che cosa scrive l'assembler</th><th>perché</th></tr>
+<tr><td>0</td><td><code>ADD.AB #1, count</code></td><td><code>ADD.AB #1, $5</code></td><td>da riga 0 a <code>count</code> (riga 5): 5 passi</td></tr>
+<tr><td>1</td><td><code>SNE.AB #10, count</code></td><td><code>SNE.AB #10, $4</code></td><td>da riga 1 a riga 5: 4 passi</td></tr>
+<tr><td>2</td><td><code>JMP fine</code></td><td><code>JMP.B $2, $0</code></td><td>da riga 2 a <code>fine</code> (riga 4): 2 passi</td></tr>
+<tr><td>3</td><td><code>JMP loop</code></td><td><code>JMP.B $-3, $0</code></td><td>da riga 3 a <code>loop</code> (riga 0): 3 indietro</td></tr>
+<tr><td>4</td><td><code>JMP fine</code></td><td><code>JMP.B $0, $0</code></td><td>da riga 4 a se stessa: 0</td></tr>
+</table>
+<p>Il nome <code>count</code> vale 5 nella prima riga e 4 nella seconda, e indica la stessa casella. Quando leggi Redcode con le etichette, pensa sempre: «questo nome vuol dire <i>la casella che si chiama così</i>», e non preoccuparti del numero. Quando leggi il codice evoluto di Red, che non ha etichette, devi fare il contrario: contare i passi.</p>
+
+<h3>Conti con le etichette</h3>
+<p>Nei campi si possono scrivere piccoli conti: <code>top-1</code> vuol dire «una casella prima di <code>top</code>», <code>count+2</code> «due caselle dopo <code>count</code>». E c'è un caso speciale importantissimo: <b>la differenza di due etichette</b>, come <code>count-loop</code>.</p>
+<p>In ogni riga <i>n</i>, <code>count</code> diventa <i>count − n</i> e <code>loop</code> diventa <i>loop − n</i>. La differenza è <i>count − loop</i>: il numero <i>n</i> sparisce. Quindi <b><code>count-loop</code> è lo stesso numero in ogni riga</b>: è la distanza da <code>loop</code> a <code>count</code>, cioè quanti passi bisogna fare partendo da <code>loop</code> per arrivare a <code>count</code>. Tieni a mente questa frase, ci serve tra poco.</p>
+
+<div class="quiz"><div class="q">L'etichetta <code>pf</code> è alla riga 20. In una riga 14 si scrive <code>MOV.I bomb, pf</code>. Quale numero mette l'assembler al posto di <code>pf</code>?</div>
+<button class="opt">20</button>
+<button class="opt" data-right>6</button>
+<button class="opt">−6</button>
+<div class="why">Dalla riga 14 alla riga 20 ci sono 6 passi in avanti: <code>pf</code> diventa <code>$6</code>.</div></div>
+
+<h2>Una casella che contiene una distanza è un puntatore</h2>
+<p>Finora la distanza era scritta dentro l'istruzione che la usa. Ma una distanza si può anche tenere in una casella a parte, nel campo B di un <code>DAT</code>:</p>
+<pre class="rc">
+x       DAT.F   #0, #12       ; il campo B vale 12: "12 caselle dopo di me"
+</pre>
+<p>Se <code>x</code> sta nella casella 4, il suo 12 indica la casella 16. Una casella usata così si chiama <b>puntatore</b>: «punta» alla casella 16. Nel capitolo 3 vediamo come un'istruzione può dire «vai dove punta <code>x</code>» (si scrive <code>@x</code>). Per ora conta solo l'idea: <b>il numero di un puntatore è una distanza contata dal puntatore stesso</b>.</p>
+
+<h2>Il problema: un puntatore copiato punta nel posto sbagliato</h2>
+<p>Supponi di voler un secondo puntatore <code>z</code> che punti allo stesso posto di <code>x</code>. Viene spontaneo copiare il numero: <code>MOV.B x, z</code> copia il campo B di <code>x</code> nel campo B di <code>z</code>. Ma il 12 di <code>x</code> era contato da <code>x</code>. Dentro <code>z</code>, che sta in un'altra casella, lo stesso 12 viene contato da <code>z</code>, e arriva da un'altra parte.</p>
+</div>
+
+<div class="col"><div class="figure">
+<svg viewBox="0 0 720 270" role="img" aria-label="Un puntatore copiato punta nel posto sbagliato">
+  <defs>
+    <marker id="d2a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="var(--c-b)"/></marker>
+    <marker id="d2r" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="var(--accent)"/></marker>
+    <marker id="d2g" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="var(--c-t1)"/></marker>
+  </defs>
+  <g transform="translate(20,90)">
+    <g font-family="var(--mono)" font-size="11" text-anchor="middle">
+      <rect x="0" y="0" width="30" height="30" rx="4" fill="var(--panel)" stroke="var(--line2)"/><text x="15" y="44" fill="var(--ink3)">2</text>
+      <rect x="32" y="0" width="30" height="30" rx="4" fill="var(--panel)" stroke="var(--line2)"/><text x="47" y="44" fill="var(--ink3)">3</text>
+      <rect x="64" y="0" width="30" height="30" rx="4" fill="var(--c-b-soft)" stroke="var(--c-b)" stroke-width="2"/><text x="79" y="19" fill="var(--c-b)" font-weight="700">x</text><text x="79" y="44" fill="var(--ink)">4</text>
+      <rect x="96" y="0" width="30" height="30" rx="4" fill="var(--panel)" stroke="var(--line2)"/><text x="111" y="44" fill="var(--ink3)">5</text>
+      <rect x="128" y="0" width="30" height="30" rx="4" fill="var(--panel)" stroke="var(--line2)"/><text x="143" y="44" fill="var(--ink3)">6</text>
+      <rect x="160" y="0" width="30" height="30" rx="4" fill="var(--panel)" stroke="var(--line2)"/><text x="175" y="44" fill="var(--ink3)">7</text>
+      <rect x="192" y="0" width="30" height="30" rx="4" fill="var(--c-a-soft)" stroke="var(--c-a)" stroke-width="2"/><text x="207" y="19" fill="var(--c-a)" font-weight="700">z</text><text x="207" y="44" fill="var(--ink)">8</text>
+      <rect x="224" y="0" width="30" height="30" rx="4" fill="var(--panel)" stroke="var(--line2)"/><text x="239" y="44" fill="var(--ink3)">9</text>
+      <rect x="256" y="0" width="30" height="30" rx="4" fill="var(--panel)" stroke="var(--line2)"/><text x="271" y="44" fill="var(--ink3)">10</text>
+      <rect x="288" y="0" width="30" height="30" rx="4" fill="var(--panel)" stroke="var(--line2)"/><text x="303" y="44" fill="var(--ink3)">11</text>
+      <rect x="320" y="0" width="30" height="30" rx="4" fill="var(--panel)" stroke="var(--line2)"/><text x="335" y="44" fill="var(--ink3)">12</text>
+      <rect x="352" y="0" width="30" height="30" rx="4" fill="var(--panel)" stroke="var(--line2)"/><text x="367" y="44" fill="var(--ink3)">13</text>
+      <rect x="384" y="0" width="30" height="30" rx="4" fill="var(--panel)" stroke="var(--line2)"/><text x="399" y="44" fill="var(--ink3)">14</text>
+      <rect x="416" y="0" width="30" height="30" rx="4" fill="var(--panel)" stroke="var(--line2)"/><text x="431" y="44" fill="var(--ink3)">15</text>
+      <rect x="448" y="0" width="30" height="30" rx="4" fill="rgba(212,160,23,.2)" stroke="var(--c-vault)" stroke-width="2"/><text x="463" y="19" fill="var(--ink)" font-weight="700">T</text><text x="463" y="44" fill="var(--ink)">16</text>
+      <rect x="480" y="0" width="30" height="30" rx="4" fill="var(--panel)" stroke="var(--line2)"/><text x="495" y="44" fill="var(--ink3)">17</text>
+      <rect x="512" y="0" width="30" height="30" rx="4" fill="var(--panel)" stroke="var(--line2)"/><text x="527" y="44" fill="var(--ink3)">18</text>
+      <rect x="544" y="0" width="30" height="30" rx="4" fill="var(--panel)" stroke="var(--line2)"/><text x="559" y="44" fill="var(--ink3)">19</text>
+      <rect x="576" y="0" width="30" height="30" rx="4" fill="var(--accent-soft)" stroke="var(--accent)" stroke-dasharray="3 2"/><text x="591" y="44" fill="var(--accent)">20</text>
+      <rect x="608" y="0" width="30" height="30" rx="4" fill="var(--panel)" stroke="var(--line2)"/><text x="623" y="44" fill="var(--ink3)">21</text>
+    </g>
+    <path d="M79 -4 C 79 -48, 463 -48, 463 -6" fill="none" stroke="var(--c-b)" stroke-width="2.2" marker-end="url(#d2a)"/>
+    <text x="270" y="-44" font-size="13" fill="var(--c-b)" text-anchor="middle" font-family="var(--font)">x: B = 12 → 4 + 12 = 16 ✓</text>
+    <path d="M207 52 C 207 150, 591 150, 591 54" fill="none" stroke="var(--accent)" stroke-width="2.2" stroke-dasharray="5 3" marker-end="url(#d2r)"/>
+    <text x="400" y="150" font-size="13" fill="var(--accent)" text-anchor="middle" font-family="var(--font)">z dopo MOV.B x, z: B = 12 → 8 + 12 = 20 ✗</text>
+    <path d="M207 52 C 207 96, 463 96, 463 54" fill="none" stroke="var(--c-t1)" stroke-width="2.2" marker-end="url(#d2g)"/>
+    <text x="335" y="98" font-size="13" fill="var(--c-t1)" text-anchor="middle" font-family="var(--font)">dopo la correzione: B = 8 → 16 ✓</text>
+  </g>
+</svg>
+<div class="cap">x sta nella casella 4 e punta a T (casella 16). Copiato in z (casella 8), lo stesso 12 arriva alla 20: 4 caselle troppo avanti, cioè esattamente la distanza da x a z.</div>
+</div></div>
+
+<div class="col">
+<p>L'errore è sempre uguale alla distanza tra il vecchio puntatore e il nuovo. Quindi la correzione è sempre la stessa: <b>dopo la copia, aggiungi la distanza da <code>z</code> a <code>x</code></b>, che in Redcode si scrive <code>x-z</code> (ricordi? la differenza di due etichette è uguale in ogni riga):</p>
+<pre class="rc">
+        MOV.B   x, z          ; z.B <- 12: copiato, ma conta da z
+        ADD.AB  #x-z, z       ; z.B <- 12 + (4 - 8) = 8: ora punta a T
+</pre>
+<p>Il <code>#</code> davanti a <code>x-z</code> vuol dire «il numero stesso» (capitolo 3): si somma il numero −4 al campo B di <code>z</code>. Prova a eseguirlo e guarda il pannello delle variabili, che dice in ogni momento dove punta ciascun puntatore.</p>
+</div>
+
+<div class="wide">
+<div class="msim" data-size="22" data-title="Copiare un puntatore e correggerlo" data-vars="x,z">
+<script type="text/redcode" data-name="Prog" data-base="1" data-color="t1">
+        MOV.B   x, z          ; copia in z il numero di x (sbagliato: conta da z)
+        ADD.AB  #x-z, z       ; aggiunge la distanza da z a x: ora z punta dove x
+        JMP     $0            ; fine: resta qui
+x       DAT.F   #0, #12       ; x punta 12 caselle avanti da sé: alla casella T
+        NOP
+        NOP
+        NOP
+z       DAT.F   #0, #0        ; il nuovo puntatore
+</script>
+<script type="text/x-cells">[{"a":16,"label":"T","note":"il bersaglio","color":"#d4a017"}]</script>
+</div>
+</div>
+
+<div class="col">
+<div class="box try"><span class="t">Prova tu</span>
+Dopo il primo passo il pannello dice che <code>z</code> punta alla casella 20. Dopo il secondo, alla 16. Torna indietro con «◀ indietro» e rifallo finché la correzione non ti sembra ovvia.</div>
+
+<p>Spesso si vuole un puntatore non allo stesso posto, ma qualche casella più in là. Basta aggiungere anche quello: <code>ADD.AB #x-z+3, z</code> fa puntare <code>z</code> a tre caselle dopo il bersaglio di <code>x</code>. È proprio la forma che ti ha bloccato nel lineage.</p>
+
+<h2>Il caso vero: la directory cell, <code>pf</code> e <code>pv</code></h2>
+<p>Ora abbiamo tutti i pezzi per leggere le righe dell'esempio R0.1 del lineage. Il problema di partenza è questo: Red, come ogni cliente, deve parlare con il servizio attraverso la sua casella postale (il suo «posto», sei caselle che iniziano con <code>FLAG</code>; capitolo 7). Ma Red non sa dove è stato caricato, e quindi non sa a che distanza sia la casella postale.</p>
+<p>Gliela dice il caricatore. Nella casella <b>subito prima</b> della prima istruzione di ogni programma, il caricatore scrive un <code>DAT</code> il cui campo B è la distanza da quella casella al <code>FLAG</code> del programma. È la <b>directory cell</b>. È un puntatore già pronto, ma sta nel posto sbagliato: fuori dal programma, e conta da sé.</p>
+<p>Il programma ha un'etichetta <code>top</code> sulla prima riga, quindi la directory cell è <code>top-1</code>. Il prelude dei test exploit comincia così:</p>
+<pre class="rc">
+top     MOV.B   top-1, pf     ; pf.B <- il numero della directory cell (conta dalla directory cell)
+        ADD.AB  #top-1-pf, pf ; aggiunge la distanza da pf alla directory cell: ora pf punta a FLAG
+        ...
+pf      DAT.F   #0, #0        ; in fondo al programma: la "variabile" pf
+</pre>
+<p>Sono le stesse due righe di <code>x</code> e <code>z</code>: la directory cell fa la parte di <code>x</code>, <code>pf</code> la parte di <code>z</code>. Poi l'attacco R0.1 fa la stessa cosa una seconda volta:</p>
+<pre class="rc">
+        MOV.B   pf, pv        ; pv.B <- il numero di pf (conta da pf)
+        ADD.AB  #pf-pv+6, pv  ; corregge di pf-pv e aggiunge 6: pv punta a FLAG + 6
+</pre>
+<p><code>pf-pv</code> è la correzione per la copia, e <code>+6</code> sposta il puntatore di sei caselle oltre <code>FLAG</code>. Perché proprio 6? Perché Red ha l'ultimo posto della casella postale, le sue sei caselle (FLAG, OP, ARG1, ARG2, ARG3, REPLY) sono le ultime, e subito dopo comincia il codice del servizio. <code>FLAG + 6</code> è la prima istruzione del servizio: il bersaglio della bomba.</p>
+<p>Ecco tutto il meccanismo in un anello di 26 caselle. La casella 2 è il <code>FLAG</code> di Red, la 8 è la prima istruzione del servizio, la 13 è la directory cell. Esegui quattro passi guardando il pannello delle variabili.</p>
+</div>
+
+<div class="wide">
+<div class="msim" data-size="26" data-title="Il prelude in miniatura: directory cell, pf, pv" data-vars="pf,pv">
+<script type="text/redcode" data-name="Red" data-base="14" data-color="red">
+top     MOV.B   top-1, pf     ; pf.B <- il numero della directory cell
+        ADD.AB  #top-1-pf, pf ; corregge: ora pf punta al mio FLAG
+        MOV.B   pf, pv        ; pv.B <- il numero di pf
+        ADD.AB  #pf-pv+6, pv  ; corregge e va 6 caselle oltre: code[0]
+        JMP     $0            ; fine dell'esempio: resta qui
+pf      DAT.F   #0, #0        ; puntatore al mio FLAG
+pv      DAT.F   #0, #0        ; puntatore al codice del servizio
+</script>
+<script type="text/x-cells">[
+ {"a":2,"label":"FLAG","note":"posto di Red nella casella postale","color":"#a04fc4"},
+ {"a":3,"label":"OP","color":"#a04fc4"},{"a":4,"label":"ARG1","color":"#a04fc4"},{"a":5,"label":"ARG2","color":"#a04fc4"},
+ {"a":6,"label":"ARG3","color":"#a04fc4"},{"a":7,"label":"REPLY","color":"#a04fc4"},
+ {"a":8,"ins":"ADD.AB #1, $20","label":"code[0]","note":"prima istruzione del servizio","color":"#2f4fa8"},
+ {"a":9,"ins":"JMZ.B $1, $-7","color":"#2f4fa8"},
+ {"a":13,"ins":"DAT.F #0, #-11","label":"dir","note":"directory cell: 13 − 11 = 2, il FLAG","color":"#999999"}
+]</script>
+</div>
+</div>
+
+<div class="col">
+<table>
+<tr><th>passo</th><th>istruzione</th><th>numero nel puntatore</th><th>dove punta</th></tr>
+<tr><td>—</td><td>la directory cell (casella 13)</td><td>−11</td><td>13 − 11 = 2 ✓ FLAG</td></tr>
+<tr><td>1</td><td><code>MOV.B top-1, pf</code></td><td>pf.B = −11</td><td>19 − 11 = 8 ✗</td></tr>
+<tr><td>2</td><td><code>ADD.AB #top-1-pf, pf</code> (cioè 13 − 19 = −6)</td><td>pf.B = −17</td><td>19 − 17 = 2 ✓ FLAG</td></tr>
+<tr><td>3</td><td><code>MOV.B pf, pv</code></td><td>pv.B = −17</td><td>20 − 17 = 3 ✗</td></tr>
+<tr><td>4</td><td><code>ADD.AB #pf-pv+6, pv</code> (cioè 19 − 20 + 6 = 5)</td><td>pv.B = −12</td><td>20 − 12 = 8 ✓ code[0]</td></tr>
+</table>
+
+<h3>Con i numeri veri dell'arena</h3>
+<p>Nella battaglia del capitolo 9 (scenario «bomba», seme 11), Red è caricato con la sua prima istruzione nella casella 5467. La directory cell è la 5466 e contiene <code>DAT.F #0, #1186</code>: 5466 + 1186 = 6652, il <code>FLAG</code> di Red. <code>pf</code> è la riga 20 del programma, quindi la casella 5487, e <code>pv</code> la 5486.</p>
+<ol class="steps">
+<li><code>MOV.B top-1, pf</code>: pf.B = 1186. Da 5487 arriva a 6673: 21 caselle troppo avanti.</li>
+<li><code>ADD.AB #top-1-pf, pf</code>: aggiunge 5466 − 5487 = −21. pf.B = 1165, e 5487 + 1165 = 6652 ✓.</li>
+<li><code>MOV.B pf, pv</code>: pv.B = 1165. Da 5486 arriva a 6651: una casella prima di FLAG.</li>
+<li><code>ADD.AB #pf-pv+6, pv</code>: aggiunge 1 + 6 = 7. pv.B = 1172, e 5486 + 1172 = 6658: la prima istruzione del servizio ✓.</li>
+</ol>
+<p>Nel capitolo 9 vedrai questi numeri apparire nell'arena, e il bombardiere usare <code>pv</code> per scrivere 40 <code>DAT</code> nel codice del servizio.</p>
+
+<div class="quiz"><div class="q">Il puntatore <code>pf</code> sta nella casella 130 e il suo campo B vale −70. Copio quel −70 in <code>pv</code>, che sta nella casella 125, senza correggere. A quale casella punta <code>pv</code>?</div>
+<button class="opt">60, come pf.</button>
+<button class="opt" data-right>55</button>
+<button class="opt">−70</button>
+<div class="why"><code>pf</code> punta a 130 − 70 = 60. Lo stesso −70 contato da 125 arriva a 55: cinque caselle prima, perché <code>pv</code> è cinque caselle prima di <code>pf</code>. La correzione è <code>ADD.AB #pf-pv, pv</code>, cioè +5.</div></div>
+
+<div class="box recap"><span class="t">In breve</span>
+<ul>
+<li>Ogni numero in un'istruzione è una distanza dalla casella dell'istruzione. Non esistono indirizzi assoluti.</li>
+<li>Un'etichetta diventa la distanza dalla riga in cui è usata alla riga che porta quel nome: lo stesso nome dà numeri diversi in righe diverse.</li>
+<li>La differenza di due etichette, come <code>x-z</code>, è uguale in ogni riga: è la distanza tra le due caselle.</li>
+<li>Un puntatore è una casella il cui campo B è una distanza. Copiato in un'altra casella punta altrove; si corregge aggiungendo la distanza tra le due: <code>MOV.B x, z</code> e poi <code>ADD.AB #x-z, z</code>.</li>
+<li>La directory cell (<code>top-1</code>) è un puntatore al proprio FLAG lasciato dal caricatore. Il prelude lo copia in <code>pf</code> e lo corregge.</li>
+</ul></div>
+</div>
+
+<div class="col"><nav class="chapnav" id="chapnav"></nav>
+<p style="font-size:13px;color:var(--ink3);margin-top:30px">Tutorial per il progetto <code>cyber_kickoff</code> (LIUC). Il simulatore di queste pagine è il motore di Landlord War tradotto in JavaScript: dà gli stessi risultati, cella per cella.</p></div>
+</main>
+</div>
+</body>
+</html>

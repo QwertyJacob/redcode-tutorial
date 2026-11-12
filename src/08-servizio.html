@@ -1,0 +1,149 @@
+<!-- title: 8 · Dentro il servizio — Redcode da −10000 a eroe | description: Come il servizio serve STORE, FILL, READ e CALL, dove stanno table, work, ret e la cassaforte, e i quattro bug voluti. -->
+<div class="col">
+<div class="kicker">Capitolo 8 · livello 300</div>
+<h1>Dentro il servizio</h1>
+<p class="lead">Per attaccare il servizio bisogna sapere com'è fatto dentro. Sono 218 istruzioni, ma è lo stesso blocco ripetuto sei volte, uno per posto della casella postale. Basta capirne uno. E basta capire una figura: come sono messi in fila i suoi dati, perché i bug del servizio sono tutti «indici che escono dal loro spazio».</p>
+
+<h2>I dati del servizio, in fila</h2>
+<p>Dopo il codice, il servizio ha cinque oggetti di dati, uno dopo l'altro:</p>
+</div>
+
+<div class="col"><div class="figure">
+<div style="display:flex;flex-wrap:wrap;gap:3px;font-family:var(--mono);font-size:12px;align-items:stretch">
+  <div style="background:var(--c-svc);color:#fff;padding:8px 10px;border-radius:6px;min-width:90px">codice<br><small>218 celle</small></div>
+  <div style="background:var(--c-table);color:#fff;padding:8px 6px;border-radius:6px;text-align:center">table[0..3]<br><small>= work[−4..−1]</small></div>
+  <div style="background:var(--c-work);color:#fff;padding:8px 10px;border-radius:6px;flex:1;min-width:180px;text-align:center">work[0] … work[15]<br><small>il buffer dei clienti</small></div>
+  <div style="background:var(--c-ret);color:#fff;padding:8px 6px;border-radius:6px;text-align:center">ret<br><small>= work[16]</small></div>
+  <div style="background:var(--c-vault);color:#fff;padding:8px 6px;border-radius:6px;text-align:center">vault<br><small>= work[17]</small></div>
+  <div style="background:var(--c-progress);color:#fff;padding:8px 6px;border-radius:6px;text-align:center">progress<br><small>= work[18]</small></div>
+</div>
+<div class="cap">L'ordine di default dei dati. Le scritte piccole dicono come li vede un indice contato da work[0]: un indice troppo grande arriva a ret e poi alla cassaforte, uno negativo arriva a table. Con il parametro <code>shuffle_layout</code> Blue può mescolare l'ordine a ogni caricamento; con <code>canaries</code> può mettere celle sentinella negli spazi.</div>
+</div></div>
+
+<div class="col">
+<table>
+<tr><th>oggetto</th><th>celle</th><th>a che cosa serve</th><th>nei programmi veri</th></tr>
+<tr><td><code>table</code></td><td>4</td><td>dove stanno i 4 gestori di CALL, come distanze da table[0]</td><td>una tabella di puntatori a funzione</td></tr>
+<tr><td><code>work</code></td><td>16</td><td>il buffer che i clienti scrivono (STORE, FILL) e leggono (READ)</td><td>un buffer in memoria</td></tr>
+<tr><td><code>ret</code></td><td>1</td><td>dove tornare quando un gestore finisce</td><td>l'indirizzo di ritorno sullo stack</td></tr>
+<tr><td><code>vault</code></td><td>1</td><td>la cassaforte: <code>DAT.F #4242, #4242</code>, non deve mai cambiare</td><td>un dato prezioso</td></tr>
+<tr><td><code>progress</code></td><td>1</td><td>sale di 1 a ogni giro del ciclo principale: il segno di vita</td><td>un battito per il watchdog</td></tr>
+</table>
+<p>Questo ordine non è casuale: è quello dei programmi veri, dove un buffer sta vicino all'indirizzo di ritorno. Scrivere oltre la fine di <code>work</code> colpisce prima <code>ret</code> e poi la cassaforte: è lo <i>stack smash</i> del capitolo 10.</p>
+
+<h2>Il ciclo principale</h2>
+<p>Il servizio ha un solo processo, che gira per sempre guardando i sei posti uno dopo l'altro. Per ogni posto <i>j</i> c'è un blocco di codice tutto suo, con le distanze del suo posto scritte dentro. Ecco il blocco del posto 0. Ho sostituito le espressioni del generatore (come <code>(base+MB+2)</code>) con il nome della cella del posto, per esempio <code>ARG1</code>.</p>
+<pre class="rc">
+m0      ADD.AB  #1, progress      ; un giro in più: progress + 1
+p0      JMZ.B   p1, FLAG          ; posto 0: FLAG = 0? allora guarda il posto 1
+k0      MOV.AB  #d0-ret, ret      ; ret <- dove tornare alla fine: la riga d0
+        DJN.B   q1_0, OP          ; OP − 1: se non era 1 non è una STORE, vai a q1_0
+s0      ADD.AB  #work-ARG1, ARG1  ; STORE: l'indice i diventa un puntatore a work[i]
+        MOV.I   ARG2, @ARG1       ; STORE: copia la cella v in work[i]
+        MOV.AB  #1, REPLY         ; risposta 1: fatto
+        JMP     @ret              ; torna dove dice ret
+q1_0    DJN.B   q2_0, OP          ; OP − 1 ancora: se non era 2 non è una FILL
+        SLT.AB  #32, ARG2         ; FILL: n è più grande di 32? allora salta la riga dopo
+        JMP     g0                ; no: tieni n
+        MOV.AB  #32, ARG2         ; sì: n = 32
+g0      ADD.AB  #work-ARG1, ARG1  ; i diventa un puntatore a work[i]
+        MOV.AB  #1, REPLY         ; risposta 1
+        SLT.AB  #0, ARG2          ; n è almeno 1? allora salta la riga dopo
+        JMP     @ret              ; no: niente da scrivere, ritorna
+f0      MOV.I   ARG3, >ARG1       ; scrive v dove punta ARG1, poi ARG1 + 1
+        DJN.B   f0, ARG2          ; n − 1; ancora, finché n = 0
+        JMP     @ret
+q2_0    DJN.B   q3_0, OP          ; OP − 1 ancora: se non era 3 non è una READ
+r0      ADD.AB  #work-ARG1, ARG1  ; READ: i diventa un puntatore a work[i]
+        MOV.I   @ARG1, REPLY      ; risponde con una copia di work[i]
+        JMP     @ret
+q3_0    DJN.B   e0, OP            ; OP − 1 ancora: se non era 4 è una richiesta sbagliata
+c0      MOV.AB  #dc0-ret, ret     ; CALL: i gestori torneranno a dc0
+        ADD.AB  #table-ARG1, ARG1 ; k diventa un puntatore a table[k]
+        MOV.B   @ARG1, ARG3       ; ARG3 <- table[k]: la distanza del gestore da table[0]
+        ADD.AB  #table-ARG3, ARG3 ; diventa un puntatore da ARG3 al gestore
+        JMP     @ARG3             ; salta al gestore
+e0      MOV.AB  #-1, REPLY        ; richiesta sbagliata: risposta −1
+        MOV.AB  #0, FLAG
+        JMP     m1
+dc0     MOV.AB  ret, REPLY        ; risponde con la risposta del gestore (campo A di ret)
+d0      MOV.AB  #0, FLAG          ; FLAG <- 0: la richiesta ha la sua risposta
+ok0     JMP     m1                ; ok: una richiesta servita. Si passa al posto 1
+</pre>
+<p>Poi viene il blocco del posto 1 (<code>m1</code>, <code>p1</code>, <code>k1</code>, …), uguale ma con le distanze del posto 1, e così fino al posto 5. In fondo ci sono i quattro gestori di CALL:</p>
+<pre class="rc">
+h0_     MOV.A   #100, ret         ; gestore 0: lascia la risposta 100 nel campo A di ret
+        JMP     @ret              ; e torna
+h1_     MOV.A   #101, ret         ; gestore 1: 101 ... e così h2_ (102) e h3_ (103)
+        JMP     @ret
+</pre>
+
+<h2>Tre trucchi da capire</h2>
+<h3>1. Scegliere che cosa fare togliendo 1</h3>
+<p>Il servizio non confronta OP con 1, 2, 3, 4. Usa <code>DJN</code>: toglie 1 a OP e salta se il risultato non è zero. Se OP era 1, il risultato è 0, non salta, e si prosegue con il codice della STORE. Se era 2, salta a <code>q1_0</code>, dove toglie di nuovo 1: ora è 0, e si prosegue con la FILL. E così via. Alla fine OP è 0 e la richiesta è scelta. Un effetto collaterale: dopo una richiesta, OP non contiene più il codice originale.</p>
+
+<h3>2. Un indice diventa un puntatore</h3>
+<p>Il cliente manda un indice <i>i</i> in ARG1, cioè «la casella <i>i</i> di work». Per il servizio <i>i</i> è una distanza contata da work[0], ma per usarla con <code>@ARG1</code> deve diventare una distanza contata da ARG1. È lo stesso problema del capitolo 2, e la stessa soluzione: aggiungere la distanza da ARG1 a work.</p>
+<pre class="rc">
+s0      ADD.AB  #work-ARG1, ARG1  ; ARG1.B = i + (work − ARG1)
+        MOV.I   ARG2, @ARG1       ; da ARG1, i + (work − ARG1) passi: si arriva a work + i
+</pre>
+<p>Qui si vede il bug. <b>Nessuno controlla che <i>i</i> stia fra 0 e 15.</b> Con <i>i</i> = 17 il servizio scrive in work + 17, che è la cassaforte. Con <i>i</i> = −1 scrive in table[3].</p>
+
+<h3>3. Tornare indietro con <code>ret</code></h3>
+<p>Ogni gestore finisce con <code>JMP @ret</code>: «salta dove punta ret». Prima di cominciare, il servizio scrive in ret la distanza da ret alla riga di ritorno (<code>k0 MOV.AB #d0-ret, ret</code>). Così, alla fine, <code>JMP @ret</code> arriva a <code>d0</code>, che azzera FLAG, e poi a <code>ok0</code>, che conta una richiesta servita. Per le CALL il ritorno è <code>dc0</code>, una riga prima, che copia anche la risposta del gestore.</p>
+<p><code>ret</code> è l'equivalente dell'indirizzo di ritorno di una funzione. Chi riesce a scriverci dentro decide dove andrà il servizio quando finisce la richiesta. Le CALL hanno un secondo punto debole: <code>JMP @ARG3</code> salta dove dice <code>table[k]</code>, e con <i>k</i> fuori da 0–3 table[k] è una cella qualunque, per esempio work[0], che Red può riempire con una STORE.</p>
+
+<h2>I quattro bug</h2>
+<p>Il servizio ha quattro bug voluti, tutti accesi nella V1 (si possono spegnere nella configurazione, per simulare un servizio corretto):</p>
+<table>
+<tr><th>richiesta</th><th>che cosa dovrebbe fare</th><th>bug</th><th>che cosa permette</th><th>nella realtà</th></tr>
+<tr><td>STORE(i, v)</td><td>work[i] = v, con 0 ≤ i &lt; 16</td><td><code>oob_store</code>: i non controllato</td><td>scrivere qualsiasi cella, cassaforte compresa</td><td>scrittura fuori dai limiti</td></tr>
+<tr><td>FILL(i, n, v)</td><td>work[i..i+n−1] = v</td><td><code>oob_fill</code>: non controlla di restare in work (n al massimo 32)</td><td>scrivere oltre work: ret, la cassaforte</td><td>buffer overflow</td></tr>
+<tr><td>READ(i)</td><td>rispondere work[i]</td><td><code>oob_read</code>: i non controllato</td><td>leggere qualsiasi cella</td><td>fuga di informazioni</td></tr>
+<tr><td>CALL(k)</td><td>saltare al gestore k, 0 ≤ k &lt; 4</td><td><code>oob_call</code>: k non controllato</td><td>far saltare il servizio dove dice una cella qualunque</td><td>puntatore a funzione corrotto</td></tr>
+</table>
+<p>In STORE e FILL il valore <i>v</i> è <b>una cella intera</b>, copiata così com'è con <code>.I</code>. Quindi un cliente può far scrivere al servizio un'istruzione, non solo un numero. Senza questo, Red non potrebbe mai far eseguire al servizio il proprio codice.</p>
+
+<h2>Guardalo lavorare</h2>
+<p>Nel visualizzatore qui sotto la lente segue il servizio. Al ciclo 40 il servizio trova la prima STORE di T1 nel posto 0, e al ciclo 47 la conta come servita. Premi il pulsante per arrivare al ciclo 39, poi «1 ciclo ▶» otto volte, leggendo la spiegazione.</p>
+<p><button class="btn primary" data-arena-goto="svcwalk@39">vai al ciclo 39</button></p>
+</div>
+
+<div class="wide">
+<div class="arena" id="svcwalk" data-scenario="quiete" data-mask="0" data-zoom="svc" data-follow="service" data-speed="1" data-nopause data-title="Il servizio serve una STORE di T1"></div>
+</div>
+
+<div class="col">
+<div class="box try"><span class="t">Che cosa vedrai, ciclo per ciclo</span>
+<ol>
+<li>ciclo 40, <code>k0</code>: il servizio prende la richiesta del posto 0 e scrive in ret la distanza da ret a <code>d0</code>;</li>
+<li>ciclo 41, <code>DJN.B</code>: OP da 1 a 0, non salta: è una STORE;</li>
+<li>ciclo 42, <code>s0</code>: ARG1 diventa un puntatore a work[i];</li>
+<li>ciclo 43, <code>MOV.I</code>: la cella v arriva in work[i] (nei dati del servizio la vedi cambiare);</li>
+<li>ciclo 44: REPLY = 1;</li>
+<li>ciclo 45, <code>JMP @ret</code>: salta a <code>d0</code>;</li>
+<li>ciclo 46, <code>d0</code>: FLAG = 0, la riga di T1 nella casella postale si spegne;</li>
+<li>ciclo 47, <code>ok0</code>: una richiesta servita.</li>
+</ol></div>
+
+<div class="quiz"><div class="q">Un cliente manda STORE(17, x). Che cosa succede, con il bug <code>oob_store</code> acceso e l'ordine di default?</div>
+<button class="opt">Il servizio risponde −1 perché 17 è fuori da work.</button>
+<button class="opt" data-right>Il servizio copia x nella cassaforte, cioè work[17].</button>
+<button class="opt">Il servizio scrive in work[1].</button>
+<div class="why">Nessun controllo sull'indice: work + 17 è la cassaforte (work[16] è ret). È l'attacco R0.3.</div></div>
+
+<div class="quiz"><div class="q">E CALL(4)?</div>
+<button class="opt" data-right>Il servizio legge table[4], che è work[0], e salta a table[0] più il numero che c'è in work[0].</button>
+<button class="opt">Il servizio esegue il gestore 4.</button>
+<button class="opt">Il servizio risponde −1.</button>
+<div class="why">table[4] è una cella dopo table[3], cioè work[0]. Se work[0] è vuoto (B = 0) il servizio salta su table[0] stesso, che è un <code>DAT</code>, e muore. È l'attacco R2.3 del capitolo 10.</div></div>
+
+<div class="box recap"><span class="t">In breve</span>
+<ul>
+<li>Dati in fila: table, work[0..15], ret (= work[16]), vault (= work[17]), progress.</li>
+<li>Il servizio sceglie la richiesta togliendo 1 a OP con <code>DJN</code>; trasforma l'indice in puntatore con <code>ADD.AB #work-ARG1, ARG1</code>; torna con <code>JMP @ret</code>.</li>
+<li>I quattro bug: indici non controllati in STORE, FILL, READ, CALL.</li>
+<li>STORE e FILL copiano celle intere: il servizio può essere costretto a scrivere istruzioni.</li>
+</ul></div>
+</div>

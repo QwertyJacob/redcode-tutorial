@@ -1,0 +1,148 @@
+<!-- title: 7 · La casella postale e il prelude — Redcode da −10000 a eroe | description: Come un programma trova il servizio, le 12 righe del prelude, e il protocollo FLAG, OP, ARG, REPLY. -->
+<div class="col">
+<div class="kicker">Capitolo 7 · livello 100</div>
+<h1>La casella postale e il prelude</h1>
+<p class="lead">I clienti non chiamano il servizio come si chiama una funzione. Gli lasciano un messaggio in una casella postale e aspettano la risposta. Per farlo ogni cliente deve prima costruire i suoi puntatori verso la casella: sono le 12 righe del «prelude», con cui cominciano T1, T2 e tutti gli attacchi di Red attraverso la casella.</p>
+
+<h2>La casella postale</h2>
+<p>La casella postale è una zona fissa di 36 celle che appartiene al servizio. È divisa in 6 <b>posti</b> da 6 celle, uno per cliente: il posto 0 è di T1, l'1 di T2, e così via fino al 4 di T5; il <b>posto 5 è di Red</b>. Ogni posto ha sempre la stessa forma:</p>
+<table>
+<tr><th>cella</th><th>nome</th><th>a che cosa serve</th></tr>
+<tr><td>+0</td><td><code>FLAG</code></td><td>1 = «c'è una richiesta», 0 = «nessuna richiesta, o risposta pronta»</td></tr>
+<tr><td>+1</td><td><code>OP</code></td><td>che cosa si chiede: 1 STORE, 2 FILL, 3 READ, 4 CALL</td></tr>
+<tr><td>+2</td><td><code>ARG1</code></td><td>primo argomento (un indice <i>i</i> o un numero <i>k</i>)</td></tr>
+<tr><td>+3</td><td><code>ARG2</code></td><td>secondo argomento (un valore <i>v</i>, o un numero <i>n</i>)</td></tr>
+<tr><td>+4</td><td><code>ARG3</code></td><td>terzo argomento (il valore <i>v</i> di FILL)</td></tr>
+<tr><td>+5</td><td><code>REPLY</code></td><td>la risposta del servizio</td></tr>
+</table>
+<p>Il <b>protocollo</b> è sempre questo:</p>
+<ol class="steps">
+<li>il cliente scrive OP e gli argomenti;</li>
+<li>mette <code>FLAG = 1</code>;</li>
+<li>aspetta finché <code>FLAG</code> torna 0;</li>
+<li>legge <code>REPLY</code>.</li>
+</ol>
+<p>Il servizio, dall'altra parte, guarda i posti uno dopo l'altro. Quando trova un <code>FLAG</code> a 1, esegue la richiesta, scrive la risposta e rimette <code>FLAG</code> a 0. Hai già visto questo schema in miniatura nel capitolo 4.</p>
+
+<h2>Il problema: dov'è la casella?</h2>
+<p>La casella postale sta in un punto scelto a caso a ogni battaglia, e così ogni cliente. Nessun programma può contenere la distanza giusta scritta in anticipo. La soluzione di Landlord War è la <b>directory cell</b> (capitolo 2): il caricatore, nella cella appena prima della prima istruzione di ogni programma, scrive <code>DAT.F #0, #d</code>, dove <i>d</i> è la distanza da quella cella al <code>FLAG</code> del posto di quel programma. Come un sistema operativo che consegna a un processo un «handle» verso il servizio.</p>
+
+<h2>Il prelude: 12 righe per costruire 6 puntatori</h2>
+<p>Ogni cliente ha bisogno di un puntatore per ciascuna cella del suo posto: <code>pf</code> per FLAG, <code>po</code> per OP, <code>p1</code> <code>p2</code> <code>p3</code> per gli argomenti, <code>pr</code> per REPLY. Le prime due righe costruiscono <code>pf</code> dalla directory cell. Le altre dieci copiano <code>pf</code> e lo correggono, ciascuna di un passo in più: la correzione <code>pf-po</code> per la copia, più 1, 2, 3, 4 o 5 per spostarsi sulla cella giusta.</p>
+<pre class="rc" data-numbers>
+top     MOV.B   top-1, pf     ; pf.B <- il numero della directory cell
+        ADD.AB  #top-1-pf, pf ; corretto: pf punta a FLAG
+        MOV.B   pf, po        ; po <- copia di pf ...
+        ADD.AB  #pf-po+1, po  ; ... corretta e spostata su OP (FLAG + 1)
+        MOV.B   pf, p1        ; p1 <- copia di pf ...
+        ADD.AB  #pf-p1+2, p1  ; ... su ARG1 (FLAG + 2)
+        MOV.B   pf, p2        ; p2 <- copia di pf ...
+        ADD.AB  #pf-p2+3, p2  ; ... su ARG2 (FLAG + 3)
+        MOV.B   pf, p3        ; p3 <- copia di pf ...
+        ADD.AB  #pf-p3+4, p3  ; ... su ARG3 (FLAG + 4)
+        MOV.B   pf, pr        ; pr <- copia di pf ...
+        ADD.AB  #pf-pr+5, pr  ; ... su REPLY (FLAG + 5)
+        ...                   ; (qui il lavoro vero)
+pf      DAT.F   #0, #0        ; in fondo al programma: i sei puntatori
+po      DAT.F   #0, #0
+p1      DAT.F   #0, #0
+p2      DAT.F   #0, #0
+p3      DAT.F   #0, #0
+pr      DAT.F   #0, #0
+</pre>
+<p>«In fondo al programma» vuol dire le ultime righe del sorgente, che al caricamento diventano le ultime celle del blocco del programma. Il processo non ci arriva mai: un salto lo rimanda sempre indietro prima. Sono solo spazio dove tenere numeri. Prova «mostra i numeri»: i <code>#pf-po+1</code> diventano tutti <code>#2</code>, perché <code>po</code> è sempre una cella dopo <code>pf</code> e quindi <code>pf-po</code> vale −1.</p>
+<p>Dopo il prelude, il cliente parla con il servizio usando i puntatori con <code>@</code>: <code>MOV.AB #1, @po</code> scrive 1 in OP, <code>MOV.AB #1, @pf</code> alza FLAG, <code>JMN.B w1, @pf</code> aspetta, <code>SEQ.I @pr, val</code> controlla la risposta.</p>
+
+<h2>Una richiesta, in miniatura</h2>
+<p>Qui c'è un posto della casella postale (celle 2–7), un servizio giocattolo che risponde sempre 42, e un cliente con il prelude ridotto a due puntatori (<code>pf</code> e <code>pr</code>). Segui un passo alla volta: il prelude, la richiesta, l'attesa, la risposta.</p>
+</div>
+
+<div class="wide">
+<div class="msim" data-size="36" data-title="Un cliente, un servizio giocattolo, un posto della casella" data-vars="pf,pr,got">
+<script type="text/redcode" data-name="Cliente" data-base="22" data-color="t1">
+top     MOV.B   top-1, pf     ; pf <- il numero della directory cell
+        ADD.AB  #top-1-pf, pf ; corretto: pf punta a FLAG
+        MOV.B   pf, pr        ; pr <- copia di pf ...
+        ADD.AB  #pf-pr+5, pr  ; ... corretta e spostata su REPLY
+        MOV.AB  #1, @pf       ; FLAG <- 1: la richiesta è pronta
+wait    JMN.B   wait, @pf     ; aspetta finché il servizio azzera FLAG
+        MOV.B   @pr, got      ; legge la risposta
+        JMP     $0            ; fine dell'esempio
+got     DAT.F   #0, #0        ; la risposta ricevuta
+pf      DAT.F   #0, #0
+pr      DAT.F   #0, #0
+</script>
+<script type="text/redcode" data-name="Servizio" data-base="10" data-color="svc">
+poll    JMZ.B   poll, poll-8  ; FLAG (casella 2) = 0? allora guarda ancora
+        MOV.AB  #42, poll-3   ; scrive la risposta 42 in REPLY (casella 7)
+        MOV.AB  #0, poll-8    ; FLAG <- 0: risposta pronta
+        JMP     poll
+</script>
+<script type="text/x-cells">[
+ {"a":2,"label":"FLAG","note":"posto del Cliente","color":"#a04fc4"},{"a":3,"label":"OP","color":"#a04fc4"},{"a":4,"label":"ARG1","color":"#a04fc4"},
+ {"a":5,"label":"ARG2","color":"#a04fc4"},{"a":6,"label":"ARG3","color":"#a04fc4"},{"a":7,"label":"REPLY","color":"#a04fc4"},
+ {"a":21,"ins":"DAT.F #0, #-19","label":"dir","note":"21 − 19 = 2: il FLAG","color":"#999999"}
+]</script>
+</div>
+</div>
+
+<div class="col">
+<p>Cose da guardare mentre avanzi:</p>
+<ul>
+<li>i primi quattro passi del Cliente costruiscono i puntatori: nel pannello, <code>pf</code> arriva a FLAG e <code>pr</code> a REPLY;</li>
+<li>intanto il Servizio gira su <code>JMZ.B</code>: FLAG è 0, niente da fare;</li>
+<li>appena il Cliente mette FLAG a 1, il Servizio scrive 42 e azzera FLAG, e il <code>JMN.B</code> del Cliente lo lascia passare;</li>
+<li>alla fine <code>got</code> contiene 42.</li>
+</ul>
+
+<h2>La stessa cosa nell'arena: T1</h2>
+<p>T1 fa esattamente questo, con il prelude completo e una richiesta vera: una STORE(i, v) seguita da una READ(i), e il controllo che la risposta sia v. Ecco il suo codice intero, dopo il prelude:</p>
+<pre class="rc">
+loop    ADD.AB  #1, ci        ; prossimo indice i ...
+        MOD.AB  #16, ci       ; ... tenuto fra 0 e 15
+        ADD.F   step, val     ; cambia il valore v, così il controllo ha senso
+        MOV.AB  #1, @po       ; OP <- 1 (STORE)
+        MOV.B   ci, @p1       ; ARG1 <- i
+        MOV.I   val, @p2      ; ARG2 <- v (la cella intera)
+        MOV.AB  #1, @pf       ; FLAG <- 1: la richiesta è pronta
+w1      JMN.B   w1, @pf       ; aspetta finché il servizio azzera FLAG
+        MOV.AB  #3, @po       ; OP <- 3 (READ)
+        MOV.B   ci, @p1       ; ARG1 <- i di nuovo (il servizio l'ha cambiato)
+        MOV.AB  #1, @pf       ; FLAG <- 1
+w2      JMN.B   w2, @pf       ; aspetta la risposta
+        SEQ.I   @pr, val      ; REPLY è esattamente v? allora salta la riga dopo
+        JMP     loop          ; no: questo lavoro è fallito, riprova
+ok      JMP     loop          ; sì: una STORE/READ controllata; ancora
+ci      DAT.F   #0, #0        ; l'indice i
+val     DAT.F   #7, #11       ; il valore v
+step    DAT.F   #3, #5        ; di quanto cambia v ogni volta
+</pre>
+<p>(Il prelude di T1 ha 10 righe invece di 12: non usa ARG3, quindi non gli serve <code>p3</code>.) La riga <code>ok</code> è importante: l'arbitro conta un lavoro di T1 ogni volta che un processo di T1 esegue quella cella. Se T1 non riceve la risposta giusta, salta <code>ok</code>.</p>
+<p>Nel visualizzatore qui sotto la lente segue T1. Premi «1 ciclo ▶» una decina di volte per vedere il prelude, poi «▶ avvia» a velocità «lento» e guarda la riga di T1 nella tabella della casella postale.</p>
+</div>
+
+<div class="wide">
+<div class="arena" id="t1walk" data-scenario="quiete" data-mask="0" data-zoom="T1" data-follow="T1" data-speed="0" data-nopause data-title="T1 al lavoro (nessuna legge, nessun Red)"></div>
+</div>
+
+<div class="col">
+<div class="box try"><span class="t">Prova tu</span>
+La directory cell di T1 è la casella 43 e contiene <code>DAT.F #0, #6579</code>: 43 + 6579 = 6622, il primo FLAG della casella postale (posto 0). Dopo due cicli <code>pf</code> deve valere 6622 meno la casella di <code>pf</code>. Controlla nella lente: <code>pf</code> è la riga 28 di T1.</div>
+
+<h2>Nessuno controlla chi scrive in un posto</h2>
+<p>Ogni cliente dovrebbe scrivere solo nel proprio posto, ma niente lo impedisce, a meno che una legge di Blue non lo vieti. Red potrebbe scrivere nel posto di T1 e mandare richieste a suo nome (<i>spoofing</i>). E c'è di peggio: quando il servizio esegue una richiesta, è il servizio a scrivere nella propria memoria. Se la richiesta chiede di scrivere dove non dovrebbe, il servizio lo fa lo stesso, con i suoi permessi. È il «vice confuso» (<i>confused deputy</i>) dell'attacco R0.3, nel capitolo 9.</p>
+
+<div class="quiz"><div class="q">Dopo il prelude, <code>p2</code> punta ad ARG2. Che cosa fa <code>MOV.I val, @p2</code>?</div>
+<button class="opt">Copia <code>val</code> nella cella <code>p2</code>.</button>
+<button class="opt" data-right>Copia la cella intera <code>val</code> nella cella ARG2 del posto.</button>
+<button class="opt">Scrive il numero p2 in val.</button>
+<div class="why"><code>@p2</code> segue il puntatore: la destinazione è la cella a cui punta <code>p2</code>, cioè ARG2. <code>.I</code> copia tutta la cella. Così un cliente può mandare al servizio un'istruzione intera, non solo un numero: Red lo userà per l'iniezione.</div></div>
+
+<div class="box recap"><span class="t">In breve</span>
+<ul>
+<li>La casella postale ha 6 posti da 6 celle: FLAG, OP, ARG1, ARG2, ARG3, REPLY. Il posto 5 è di Red.</li>
+<li>Protocollo: scrivi OP e argomenti, FLAG = 1, aspetta FLAG = 0, leggi REPLY.</li>
+<li>La directory cell dice a ogni programma la distanza dal suo FLAG. Il prelude la trasforma in sei puntatori, <code>pf</code> … <code>pr</code>, tenuti in fondo al programma.</li>
+<li>Nessuno controlla chi scrive dove, e il servizio esegue le richieste con i propri permessi.</li>
+</ul></div>
+</div>

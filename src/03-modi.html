@@ -1,0 +1,156 @@
+<!-- title: 3 · I modi di indirizzamento — Redcode da −10000 a eroe | description: Come un numero diventa una casella: immediato, diretto, indiretto, e i puntatori che si spostano da soli. -->
+<div class="col">
+<div class="kicker">Capitolo 3 · livello −2000</div>
+<h1>I modi di indirizzamento</h1>
+<p class="lead">Davanti a ogni numero di un'istruzione c'è un simbolo. Il simbolo dice come trasformare quel numero in una casella. Sono otto simboli, e si imparano in tre gruppi: il numero stesso, la casella a quella distanza, e la casella indicata da un puntatore. Gli ultimi due simboli di ogni coppia spostano anche il puntatore, ed è così che programmi di due righe riescono a scrivere su tutta la memoria.</p>
+
+<h2>Prima un'idea: ogni campo diventa una casella</h2>
+<p>Quando un processo esegue un'istruzione, la macchina per prima cosa guarda il campo A e trova la casella che indica. Poi fa lo stesso con il campo B. Solo dopo esegue l'operazione. Per <code>MOV A, B</code>: trova la casella sorgente (A), trova la casella destinazione (B), poi copia. I simboli dicono come fare il primo passo.</p>
+
+<h2>Gruppo 1: <code>#</code>, il numero stesso</h2>
+<p><code>#7</code> è il numero 7, punto. Non indica nessuna casella. Si chiama <b>immediato</b>. <code>MOV.AB #7, dst</code> scrive 7 nel campo B di <code>dst</code>. Lo usi quando vuoi un valore fisso: «metti 1 in FLAG», «aggiungi 1 al contatore», «aggiungi la correzione <code>x-z</code>».</p>
+
+<h2>Gruppo 2: <code>$</code>, la casella a quella distanza</h2>
+<p><code>$3</code> è la casella 3 passi avanti, come nel capitolo 2. Si chiama <b>diretto</b>. Se non scrivi nessun simbolo, vale <code>$</code>: <code>MOV.I src, dst</code> è <code>MOV.I $src, $dst</code>.</p>
+<p>Qui sotto le due cose una accanto all'altra. La prima riga scrive un numero, la seconda copia una casella intera.</p>
+</div>
+
+<div class="wide">
+<div class="msim" data-size="12" data-title="# contro $">
+<script type="text/redcode" data-name="Prova" data-base="1" data-color="t1">
+        MOV.AB  #7, dst       ; #7 è il numero 7: lo scrive nel campo B di dst
+        MOV.I   src, dst2     ; src è una casella: la copia intera in dst2
+        JMP     $0
+src     DAT.F   #1, #2
+dst     DAT.F   #0, #0
+dst2    DAT.F   #0, #0
+</script>
+</div>
+</div>
+
+<div class="col">
+<h2>Gruppo 3: <code>@</code> e <code>*</code>, la casella indicata da un puntatore</h2>
+<p>Qui arriva l'idea nuova. <code>@ptr</code> vuol dire: <b>vai alla casella <code>ptr</code>, leggi il suo campo B, e fai altri tanti passi da lì</b>. La casella <code>ptr</code> è un puntatore (capitolo 2), e <code>@</code> lo segue. Si chiama <b>indiretto</b>.</p>
+<pre class="rc">
+        MOV.I   bomb, @ptr    ; copia bomb nella casella a cui punta ptr
+        ...
+ptr     DAT.F   #0, #5        ; ptr punta 5 caselle dopo di sé
+</pre>
+<p>Due passi, sempre nello stesso ordine:</p>
+<ol class="steps">
+<li>dalla casella dell'istruzione, fai <code>ptr</code> passi: sei sul puntatore;</li>
+<li>dal puntatore, fai tanti passi quanto vale il suo campo B: sei sulla casella finale.</li>
+</ol>
+<p><code>*ptr</code> fa la stessa cosa usando il <b>campo A</b> del puntatore invece del B. È l'unica differenza.</p>
+</div>
+
+<div class="wide">
+<div class="msim" data-size="14" data-title="@: seguire un puntatore" data-vars="ptr">
+<script type="text/redcode" data-name="Prova" data-base="1" data-color="t1">
+        MOV.I   bomb, @ptr    ; copia bomb dove punta ptr
+        JMP     $0
+bomb    DAT.F   #9, #9
+ptr     DAT.F   #0, #5        ; ptr punta 5 caselle dopo di sé
+</script>
+</div>
+</div>
+
+<div class="col">
+<p>La freccia tratteggiata viola va dall'istruzione al puntatore, quella blu dal puntatore alla destinazione. Il vantaggio rispetto a <code>$</code>: la destinazione si può cambiare <i>mentre il programma gira</i>, cambiando il numero dentro <code>ptr</code>. Con <code>$</code> la distanza è fissata nell'istruzione.</p>
+
+<div class="box arena-note"><span class="t">Nell'arena</span>
+Tutti i clienti parlano con il servizio così. <code>MOV.AB #1, @pf</code> vuol dire «scrivi 1 nel campo B della casella a cui punta <code>pf</code>», cioè nel <code>FLAG</code>. Il prelude del capitolo 2 serve proprio a preparare <code>pf</code> perché <code>@pf</code> arrivi al posto giusto.</div>
+
+<h2>Le varianti che spostano il puntatore: <code>&lt;</code> <code>&gt;</code> <code>{</code> <code>}</code></h2>
+<p>Gli ultimi quattro simboli funzionano come <code>@</code> e <code>*</code>, ma <b>cambiano anche il puntatore</b> di 1:</p>
+<table>
+<tr><th>simbolo</th><th>campo del puntatore</th><th>quando lo cambia</th></tr>
+<tr><td><code>&gt;</code></td><td>B</td><td><b>dopo</b> averlo usato, gli aggiunge 1 (post-incremento)</td></tr>
+<tr><td><code>&lt;</code></td><td>B</td><td><b>prima</b> di usarlo, gli toglie 1 (pre-decremento)</td></tr>
+<tr><td><code>}</code></td><td>A</td><td>dopo, +1</td></tr>
+<tr><td><code>{</code></td><td>A</td><td>prima, −1</td></tr>
+</table>
+<p>Messo in un ciclo, un puntatore così cammina da solo: ogni giro arriva una casella più in là. Ecco un programma che scrive una «bomba» in caselle sempre nuove:</p>
+</div>
+
+<div class="wide">
+<div class="msim" data-size="20" data-title=">: un puntatore che cammina" data-vars="ptr">
+<script type="text/redcode" data-name="Bomb" data-base="1" data-color="red">
+loop    MOV.I   bomb, >ptr    ; copia bomb dove punta ptr, poi ptr.B + 1
+        JMP     loop          ; e ancora
+bomb    DAT.F   #9, #9        ; la bomba
+ptr     DAT.F   #0, #3        ; il puntatore: parte 3 caselle dopo di sé
+</script>
+</div>
+</div>
+
+<div class="col">
+<div class="box try"><span class="t">Prova tu</span>
+Avvia e aspetta. Il puntatore fa il giro dell'anello e alla fine scrive la bomba sopra la riga <code>loop</code>. Il processo, che torna sempre a <code>loop</code>, esegue la bomba e muore. Un bombardiere che si colpisce da solo: i bombardieri veri scelgono il passo con cura per evitarlo (capitolo 5).</div>
+
+<h3>Che cosa vuol dire «scrivere» qui</h3>
+<p>C'è un dettaglio che nel pilot diventa importantissimo: <b>cambiare il puntatore è una scrittura</b>. Con <code>&gt;ptr</code> l'istruzione scrive due volte: nella destinazione, e nel campo B di <code>ptr</code>. Per le leggi di Blue sono due eventi di scrittura. E con <code>&lt;</code> o <code>{</code> si scrive anche se l'istruzione principale non scrive niente: <code>JMP $0, &lt;5</code> salta su se stessa e intanto abbassa di 1 il campo B della casella 5 passi avanti.</p>
+
+<h2>Il campo A: lo scrittore silenzioso in miniatura</h2>
+<p>Nel pilot M8, dal round 22 in poi, Red vince quasi sempre con un programma di due istruzioni che usa i modi del campo A. Il campione del round 28 è questo (la prima riga non viene mai eseguita, perché il programma parte dalla seconda):</p>
+<pre class="rc">
+        ADD.A  *16, {5659     ; mai eseguita
+        ADD.A  *20, {5438     ; ← il programma parte da qui
+        JMP.A  $-1, $-5       ; torna alla riga sopra
+</pre>
+<p>Leggiamo <code>ADD.A *20, {5438</code> con le regole di questo capitolo:</p>
+<ul>
+<li><b>A = <code>*20</code></b>: vai alla casella 20 passi avanti; leggi il suo campo A. Quella casella è vuota, il campo A vale 0, quindi «altri 0 passi»: la sorgente è la casella vuota stessa, e il suo campo A vale 0.</li>
+<li><b>B = <code>{5438</code></b>: vai alla casella 5438 passi avanti (chiamiamola P); <b>prima</b> abbassa di 1 il suo campo A; poi fai tanti passi quanto vale. La prima volta P.A passa da 0 a −1, e la destinazione è la casella prima di P.</li>
+<li><b><code>ADD.A</code></b>: aggiunge il campo A della sorgente (0) al campo A della destinazione. Aggiungere 0 non cambia niente.</li>
+</ul>
+<p>Poi <code>JMP</code> torna su. Al giro dopo P.A vale −2, e la destinazione è due caselle prima di P. E così via: ogni due cicli una casella più indietro. In 20.000 cicli il programma «scrive» circa 10.000 caselle, cioè tutto il core, senza cambiarne nessuna tranne P. Ecco la stessa cosa in un anello di 24 caselle:</p>
+</div>
+
+<div class="wide">
+<div class="msim" data-size="24" data-title="Lo scrittore silenzioso, in piccolo">
+<script type="text/redcode" data-name="Red" data-base="2" data-color="red">
+        ADD.A   *8, {6        ; sorgente: la casella vuota 8 passi avanti; destinazione: P + P.A, dopo P.A − 1
+        JMP.A   $-1, $-5      ; torna su (il campo B non scrive niente)
+</script>
+<script type="text/x-cells">[{"a":8,"label":"P","note":"il puntatore: solo il suo campo A cambia","color":"#dc2b2b"},{"a":10,"label":"zero","note":"casella vuota: la sorgente","color":"#bbbbbb"}]</script>
+</div>
+</div>
+
+<div class="col">
+<p>Guarda le caselle che lampeggiano: cambia solo il campo A di P. Le destinazioni ricevono «+0». Eppure ognuna di quelle caselle, per la macchina, è stata scritta da Red. Nel capitolo 13 vediamo perché questo ha ingannato l'arbitro del pilot.</p>
+
+<h2>Riassunto degli otto simboli</h2>
+<table>
+<tr><th>simbolo</th><th>nome</th><th>per il numero <i>n</i> nella casella <i>p</i>, la casella è…</th><th>cambia qualcosa?</th></tr>
+<tr><td><code>#</code></td><td>immediato</td><td>nessuna: è il numero <i>n</i></td><td>no</td></tr>
+<tr><td><code>$</code></td><td>diretto</td><td><i>p + n</i></td><td>no</td></tr>
+<tr><td><code>@</code></td><td>indiretto B</td><td><i>q + q.B</i>, con <i>q = p + n</i></td><td>no</td></tr>
+<tr><td><code>*</code></td><td>indiretto A</td><td><i>q + q.A</i></td><td>no</td></tr>
+<tr><td><code>&lt;</code></td><td>pre-decremento B</td><td>come <code>@</code>, dopo aver tolto 1 a <i>q.B</i></td><td>sì, <i>q.B</i> − 1</td></tr>
+<tr><td><code>&gt;</code></td><td>post-incremento B</td><td>come <code>@</code>, poi aggiunge 1 a <i>q.B</i></td><td>sì, <i>q.B</i> + 1</td></tr>
+<tr><td><code>{</code></td><td>pre-decremento A</td><td>come <code>*</code>, dopo aver tolto 1 a <i>q.A</i></td><td>sì, <i>q.A</i> − 1</td></tr>
+<tr><td><code>}</code></td><td>post-incremento A</td><td>come <code>*</code>, poi aggiunge 1 a <i>q.A</i></td><td>sì, <i>q.A</i> + 1</td></tr>
+</table>
+<p>Un trucco per ricordarli: <code>@ &lt; &gt;</code> usano il campo B; <code>* { }</code> usano il campo A. Le «frecce» <code>&lt;</code> e <code>{</code> tolgono prima, <code>&gt;</code> e <code>}</code> aggiungono dopo.</p>
+
+<div class="quiz"><div class="q">L'istruzione <code>MOV.I bomb, @ptr</code> sta nella casella 10. <code>ptr</code> è la casella 14 e contiene <code>DAT.F #0, #6</code>. Dove finisce la bomba?</div>
+<button class="opt">Nella casella 14.</button>
+<button class="opt">Nella casella 16.</button>
+<button class="opt" data-right>Nella casella 20.</button>
+<div class="why">Dalla casella 10 si va al puntatore, la 14; dal puntatore si fanno 6 passi: 14 + 6 = 20.</div></div>
+
+<div class="quiz"><div class="q">E con <code>MOV.I bomb, &gt;ptr</code>, che cosa c'è in <code>ptr</code> dopo l'esecuzione?</div>
+<button class="opt" data-right><code>DAT.F #0, #7</code>: la bomba va nella 20 e poi il campo B sale a 7.</button>
+<button class="opt"><code>DAT.F #0, #6</code>: <code>&gt;</code> non cambia il puntatore.</button>
+<button class="opt"><code>DAT.F #0, #5</code>: prima toglie 1.</button>
+<div class="why"><code>&gt;</code> usa il valore attuale (6, quindi la casella 20) e <i>dopo</i> aggiunge 1. Toglierebbe 1 prima <code>&lt;</code>.</div></div>
+
+<div class="box recap"><span class="t">In breve</span>
+<ul>
+<li><code>#n</code> è il numero; <code>$n</code> è la casella a distanza <i>n</i>.</li>
+<li><code>@p</code> e <code>*p</code> seguono un puntatore: prima si va a <code>p</code>, poi si fanno tanti passi quanto vale il suo campo B (<code>@</code>) o A (<code>*</code>).</li>
+<li><code>&lt; &gt; { }</code> fanno lo stesso e spostano il puntatore di 1. Spostare il puntatore è una scrittura.</li>
+<li>Un ciclo con un puntatore che si sposta scrive in caselle sempre nuove: è il motore di bombardieri e scrittori silenziosi.</li>
+</ul></div>
+</div>

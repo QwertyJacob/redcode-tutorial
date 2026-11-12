@@ -1,0 +1,108 @@
+<!-- title: 5 · Primi guerrieri — Redcode da −10000 a eroe | description: L'Imp, il Dwarf, una battaglia tra i due, e il bombardiere a fabbrica che Red ha evoluto nel round 2 del pilot. -->
+<div class="col">
+<div class="kicker">Capitolo 5 · livello −500</div>
+<h1>Primi guerrieri</h1>
+<p class="lead">Con quello che sai si leggono già i programmi classici di Core War. Sono importanti anche per Landlord War: la popolazione iniziale di Red contiene centinaia di guerrieri scritti da persone, e i primi campioni del pilot sono loro discendenti diretti.</p>
+
+<h2>L'Imp, di nuovo</h2>
+<p><code>MOV.I $0, $1</code> copia se stesso nella casella dopo e ci va. Non uccide nessuno direttamente, ma tutto quello che incontra diventa un Imp. È quasi impossibile da colpire, perché non sta mai fermo.</p>
+
+<h2>Il Dwarf: il bombardiere classico</h2>
+<p>Il Dwarf (A. K. Dewdney, 1984) è lungo quattro righe. Lancia una bomba ogni 4 caselle, intorno a tutto l'anello.</p>
+<pre class="rc">
+        ADD.AB  #4, bomb      ; il puntatore va 4 caselle più in là
+        MOV.I   bomb, @bomb   ; copia la bomba dove punta il puntatore
+        JMP     -2            ; e ancora
+bomb    DAT.F   #0, #0        ; è insieme la bomba e il puntatore
+</pre>
+<p>Due idee furbe in quattro righe. La casella <code>bomb</code> fa due lavori: il suo campo B è il puntatore, e la casella intera è la bomba che viene copiata. E il passo 4 è scelto in modo che le bombe non cadano mai sulle prime tre righe del Dwarf: cadono sulle caselle che distano da <code>bomb</code> un multiplo di 4, e le tre righe stanno a distanza 1, 2 e 3. (Funziona se la grandezza dell'anello è un multiplo di 4: 8000 lo è, e anche 32 qui sotto.)</p>
+</div>
+
+<div class="wide">
+<div class="msim" data-size="32" data-title="Il Dwarf da solo" data-vars="bomb">
+<script type="text/redcode" data-name="Dwarf" data-base="0" data-color="red">
+        ADD.AB  #4, bomb      ; il puntatore va 4 caselle più in là
+        MOV.I   bomb, @bomb   ; copia la bomba dove punta
+        JMP     -2            ; e ancora
+bomb    DAT.F   #0, #0        ; la bomba e il puntatore
+</script>
+</div>
+</div>
+
+<div class="col">
+<div class="box try"><span class="t">Prova tu</span>
+Avvia a velocità «veloce». Le bombe cadono sulle caselle 7, 11, 15, …, 31, poi sulla 3: è <code>bomb</code> stessa, che viene sovrascritta con una copia di sé. Nessuna bomba cade sulle caselle 0, 1, 2.</div>
+
+<h2>Una battaglia: il Dwarf contro l'Imp</h2>
+<p>Ora i due nello stesso anello. Fanno un'istruzione a testa per ciclo. Il Dwarf vince se una sua bomba cade proprio sulla casella in cui l'Imp sta per arrivare; l'Imp «vince» se arriva sul Dwarf prima, e lo trasforma in un altro Imp.</p>
+</div>
+
+<div class="wide">
+<div class="msim" data-size="32" data-title="Dwarf contro Imp">
+<script type="text/redcode" data-name="Dwarf" data-base="0" data-color="red">
+        ADD.AB  #4, bomb
+        MOV.I   bomb, @bomb
+        JMP     -2
+bomb    DAT.F   #0, #0
+</script>
+<script type="text/redcode" data-name="Imp" data-base="10" data-color="t1">
+imp     MOV.I   $0, $1
+</script>
+</div>
+</div>
+
+<div class="col">
+<p>Con l'Imp che parte dalla casella 10, al ciclo 14 il Dwarf mette una bomba nella casella 23, e subito dopo, nello stesso ciclo, l'Imp arriva proprio lì: esegue la bomba e muore. Con altre posizioni di partenza, invece, l'Imp arriva sul codice del Dwarf e il Dwarf diventa un Imp anche lui. In Core War vero si gioca su molte posizioni a caso e si conta chi vince più spesso. In Landlord War, allo stesso modo, ogni programma viene provato con più semi (posizioni casuali diverse) e si fa la media.</p>
+
+<h2>Il bombardiere a fabbrica (pilot, round 2)</h2>
+<p>Il campione di Red del round 2 del pilot è un bombardiere con molti processi. Le sue prime righe:</p>
+<pre class="rc">
+        SPL.B  $0, &lt;4290      ; una fabbrica di processi
+        MOV.I  $-70, &lt;-71     ; copia una casella vuota in una casella sempre più indietro
+        MOV.I  $-72, &lt;-72     ; lo stesso con un secondo puntatore
+        SPL.B  $0, &lt;-73      ; una seconda fabbrica
+</pre>
+<p>Leggiamole con calma:</p>
+<ul>
+<li><b><code>SPL.B $0, &lt;4290</code></b>: <code>SPL $0</code> crea un nuovo processo che parte da <i>questa stessa riga</i>, mentre il processo attuale passa alla riga dopo. Ogni volta che un processo passa di qui ne nasce un altro, che ripasserà di qui e ne farà nascere un altro: una fabbrica. In pochi cicli il programma arriva a 64 processi, il massimo. Il campo B <code>&lt;4290</code> non serve a <code>SPL</code>, ma viene valutato lo stesso: abbassa di 1 il campo B di una casella lontana, a ogni passaggio.</li>
+<li><b><code>MOV.I $-70, &lt;-71</code></b>: la sorgente è la casella 70 indietro, che è vuota. La destinazione segue un puntatore 71 caselle indietro, dopo averlo abbassato di 1. Quindi a ogni passaggio scrive una casella vuota (<code>DAT.F $0, $0</code>) un passo più indietro. Un <code>DAT</code> vuoto è una bomba come un'altra: chi lo esegue muore.</li>
+</ul>
+<p>È un bombardiere «cieco»: non mira al servizio, cancella tutto quello che trova. Ecco lo stesso schema in un anello di 30 caselle, con un contatore come vittima:</p>
+</div>
+
+<div class="wide">
+<div class="msim" data-size="30" data-title="Fabbrica di processi e cancellino">
+<script type="text/redcode" data-name="Conta" data-base="2" data-color="t1">
+start   ADD.AB  #1, count
+        JMP     start
+count   DAT.F   #0, #0
+</script>
+<script type="text/redcode" data-name="Red" data-base="20" data-color="red">
+        SPL.B   $0, $0        ; fabbrica: un processo nuovo che riparte da qui
+        MOV.I   $-10, <-11    ; copia la casella vuota 10 indietro in una casella sempre più indietro
+</script>
+<script type="text/x-cells">[{"a":10,"label":"ptr","note":"il puntatore che scende","color":"#f29999"}]</script>
+</div>
+</div>
+
+<div class="col">
+<p>Ogni processo di Red esegue lo <code>SPL</code>, il <code>MOV</code>, poi arriva sulla casella dopo, che è vuota, e muore. Ma la fabbrica ne crea sempre di nuovi, quindi il programma resta vivo. Intanto il puntatore scende: cancella le caselle 9, 8, 7, … fino al contatore, che muore al ciclo 22.</p>
+<p>Nel pilot questa strategia funziona bene all'inizio: con 64 processi, uccidere Red è quasi impossibile, e prima o poi il cancellino arriva sul codice del servizio. Nel capitolo 15 vedremo come Blue ha risposto.</p>
+
+<div class="box arena-note"><span class="t">Dove nascono i programmi di Red</span>
+La popolazione iniziale di Red è fatta per metà di guerrieri umani come questi (circa 300 programmi raccolti dalla comunità di Core War), per un quarto di copie dei clienti onesti T1 e T2, e per un quarto di programmi casuali. Poi l'evoluzione li muta e li incrocia. Nel capitolo 14 vediamo come.</div>
+
+<div class="quiz"><div class="q">Perché il Dwarf usa il passo 4 e non, per esempio, 3?</div>
+<button class="opt">Perché 4 è più veloce.</button>
+<button class="opt" data-right>Perché con 4 le bombe non cadono mai sulle sue tre righe di codice.</button>
+<button class="opt">Perché 4 è il numero di istruzioni del servizio.</button>
+<div class="why">Le bombe cadono a distanze multiple di 4 da <code>bomb</code>; le righe di codice stanno a distanza 1, 2 e 3. Con passo 3, la terza bomba prima o poi cadrebbe sulla riga <code>ADD</code>.</div></div>
+
+<div class="box recap"><span class="t">In breve</span>
+<ul>
+<li>L'Imp si copia in avanti; il Dwarf bombarda ogni 4 caselle senza colpirsi.</li>
+<li>In battaglia conta anche il caso: dove parte ciascuno. Per questo si prova su più posizioni.</li>
+<li><code>SPL $0</code> in un ciclo è una fabbrica di processi: il programma arriva subito a 64 processi.</li>
+<li>Copiare una casella vuota è un modo di bombardare: un <code>DAT</code> vuoto uccide come un altro.</li>
+</ul></div>
+</div>

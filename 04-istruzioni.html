@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>4 · Modificatori e istruzioni — Redcode da −10000 a eroe</title>
+<meta name="description" content="Quale campo si copia, si somma o si confronta, e le 16 istruzioni di Redcode con un esempio ciascuna.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' rx='3' fill='%23dc2b2b'/><rect x='3' y='3' width='4' height='4' fill='%23fff'/><rect x='9' y='9' width='4' height='4' fill='%23fff'/></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/style.css">
+<script src="assets/js/engine.js"></script>
+<script src="assets/js/ui-core.js"></script>
+<script src="assets/js/msim.js"></script>
+<script src="assets/js/arena.js"></script>
+<script src="assets/js/lawlab.js"></script>
+</head>
+<body>
+<div class="topbar" id="topbar"></div>
+<div class="site">
+<aside class="side" id="side"></aside>
+<main>
+<div class="col">
+<div class="kicker">Capitolo 4 · livello −1000</div>
+<h1>Modificatori e istruzioni</h1>
+<p class="lead">Sai già trovare le caselle indicate dai campi A e B. Resta da sapere che cosa fa l'istruzione con quelle caselle, e su quale parte delle caselle lavora. La seconda cosa la dice il modificatore, la lettera dopo il punto.</p>
+
+<h2>I modificatori: quale campo si muove</h2>
+<p>Una casella ha due numeri, A e B (più l'istruzione). Quando copi o sommi da una casella sorgente a una destinazione, devi dire quali numeri: è il lavoro del modificatore. In <code>MOV</code>:</p>
+<table>
+<tr><th>modificatore</th><th>che cosa copia</th><th>esempio, sorgente <code>DAT.F #3, #5</code>, destinazione <code>DAT.F #10, #20</code></th></tr>
+<tr><td><code>.A</code></td><td>A della sorgente → A della destinazione</td><td><code>DAT.F #<b class="fa-t">3</b>, #20</code></td></tr>
+<tr><td><code>.B</code></td><td>B → B</td><td><code>DAT.F #10, #<b class="fb-t">5</b></code></td></tr>
+<tr><td><code>.AB</code></td><td>A → B</td><td><code>DAT.F #10, #<b class="fb-t">3</b></code></td></tr>
+<tr><td><code>.BA</code></td><td>B → A</td><td><code>DAT.F #<b class="fa-t">5</b>, #20</code></td></tr>
+<tr><td><code>.F</code></td><td>A → A e B → B (entrambi)</td><td><code>DAT.F #<b class="fa-t">3</b>, #<b class="fb-t">5</b></code></td></tr>
+<tr><td><code>.X</code></td><td>A → B e B → A (incrociati)</td><td><code>DAT.F #<b class="fa-t">5</b>, #<b class="fb-t">3</b></code></td></tr>
+<tr><td><code>.I</code></td><td>tutta la casella: istruzione e numeri</td><td>la destinazione diventa <code>DAT.F #3, #5</code>, anche se prima era un'altra istruzione</td></tr>
+</table>
+<p>Con <code>ADD</code>, <code>SUB</code> e le altre operazioni vale lo stesso schema: <code>ADD.AB</code> somma il campo A della sorgente al campo B della destinazione. <code>.I</code> per l'aritmetica vale come <code>.F</code>.</p>
+
+<h3>Prova: il laboratorio dei modificatori</h3>
+<p>Cambia <code>.AB</code> nella prima riga con un altro modificatore (<code>.A</code>, <code>.B</code>, <code>.BA</code>, <code>.F</code>, <code>.X</code>, <code>.I</code>), premi «carica» e poi «Passo». Puoi anche cambiare <code>MOV</code> in <code>ADD</code>.</p>
+</div>
+
+<div class="wide">
+<div class="msim" data-size="8" data-title="Laboratorio dei modificatori" data-edit>
+<script type="text/redcode" data-name="Lab" data-base="1" data-color="t1">
+        MOV.AB  src, dst      ; prova .A .B .AB .BA .F .X .I
+        JMP     $0
+src     DAT.F   #3, #5
+dst     DAT.F   #10, #20
+</script>
+</div>
+</div>
+
+<div class="col">
+<h3>Il caso più comune: un numero immediato</h3>
+<p>Con <code>#</code> il campo A non indica nessuna casella: per la macchina la «sorgente» è l'istruzione stessa, e il numero sta nel suo campo A. Per questo, per scrivere un numero nel campo B di una casella, si usa <code>.AB</code>:</p>
+<pre class="rc">
+        MOV.AB  #1, @pf       ; il numero 1 (campo A di questa riga) nel campo B di FLAG
+        ADD.AB  #1, count     ; aggiunge 1 al campo B di count
+</pre>
+<p>Vedrai <code>.AB</code> con <code>#</code> in quasi ogni riga dei clienti e del servizio. Non è un caso: i puntatori e i contatori stanno nel campo B, e i numeri fissi nel campo A dell'istruzione.</p>
+
+<h3>Se il modificatore manca</h3>
+<p>Si può omettere il modificatore: l'assembler ne sceglie uno in base ai simboli. Le regole principali:</p>
+<ul>
+<li><code>MOV</code> con un <code>#</code> in A → <code>.AB</code>; tra due caselle → <code>.I</code>;</li>
+<li><code>ADD</code>, <code>SUB</code>, … con <code>#</code> in A → <code>.AB</code>; tra due caselle → <code>.F</code>;</li>
+<li><code>JMP</code>, <code>JMZ</code>, <code>JMN</code>, <code>DJN</code>, <code>SPL</code> → <code>.B</code>;</li>
+<li><code>DAT</code> e <code>NOP</code> → <code>.F</code>.</li>
+</ul>
+<p>Il codice evoluto di Red ha sempre il modificatore scritto, perché la mutazione lo sceglie esplicitamente: è anche per questo che a volte appaiono combinazioni strane come <code>JMP.A</code> o <code>SPL.F</code>. Per <code>JMP</code> il modificatore non conta niente.</p>
+
+<h2>Le 16 istruzioni</h2>
+<p>Ecco tutte, a gruppi. Per ciascuna: che cosa fa, e una riga di esempio.</p>
+
+<h3>Dati e niente: <code>DAT</code>, <code>NOP</code></h3>
+<ul>
+<li><code>DAT</code> contiene due numeri. Chi la esegue muore. <code>bomb DAT.F #0, #0</code></li>
+<li><code>NOP</code> non fa niente e passa alla casella dopo. <code>NOP</code></li>
+</ul>
+
+<h3>Copiare: <code>MOV</code></h3>
+<ul><li>Copia A in B, secondo il modificatore. <code>MOV.I bomb, >ptr</code></li></ul>
+
+<h3>Aritmetica: <code>ADD</code>, <code>SUB</code>, <code>MUL</code>, <code>DIV</code>, <code>MOD</code></h3>
+<ul>
+<li>Il campo (o i campi) della destinazione diventa «destinazione operazione sorgente»: <code>ADD.AB #4, ptr</code> fa ptr.B = ptr.B + 4.</li>
+<li><code>DIV</code> e <code>MOD</code> per zero uccidono il processo, come un <code>DAT</code>.</li>
+<li><code>MOD.AB #16, ci</code> tiene <code>ci</code> fra 0 e 15: lo usa T1 per l'indice della STORE.</li>
+</ul>
+
+<h3>Saltare: <code>JMP</code>, <code>JMZ</code>, <code>JMN</code>, <code>DJN</code></h3>
+<ul>
+<li><code>JMP A</code>: il processo continua dalla casella A. <code>JMP loop</code></li>
+<li><code>JMZ A, B</code>: salta ad A se il campo di B è zero, altrimenti prosegue. <code>JMZ.B poll, flag</code> («se non c'è una richiesta, torna a guardare»).</li>
+<li><code>JMN A, B</code>: salta ad A se il campo di B <i>non</i> è zero. <code>JMN.B wait, @pf</code> («finché FLAG non torna 0, aspetta»).</li>
+<li><code>DJN A, B</code>: toglie 1 al campo di B, poi salta ad A se il risultato non è zero. È il ciclo «ripeti n volte». <code>DJN.B bomb, cnt</code></li>
+</ul>
+<p>Con <code>.B</code> o <code>.AB</code> si guarda il campo B della casella B; con <code>.A</code> o <code>.BA</code> il campo A; con <code>.F</code>, <code>.X</code>, <code>.I</code> entrambi.</p>
+</div>
+
+<div class="wide">
+<div class="msim" data-size="10" data-title="DJN: ripeti finché il contatore arriva a zero" data-vars="cnt">
+<script type="text/redcode" data-name="Ciclo" data-base="1" data-color="t1">
+loop    ADD.AB  #10, sum      ; il lavoro: sum + 10
+        DJN.B   loop, cnt     ; cnt − 1; se non è zero, ancora
+        JMP     $0            ; finito: resta qui
+sum     DAT.F   #0, #0
+cnt     DAT.F   #0, #3        ; quante volte
+</script>
+</div>
+</div>
+
+<div class="col">
+<h3>Confrontare: <code>SEQ</code> (o <code>CMP</code>), <code>SNE</code>, <code>SLT</code></h3>
+<p>Queste istruzioni non saltano: se la condizione è vera <b>saltano la riga dopo</b> (il processo va avanti di due caselle invece che di una). Si usano con un <code>JMP</code> subito sotto.</p>
+<ul>
+<li><code>SEQ A, B</code>: salta la riga dopo se A e B sono uguali. <code>CMP</code> è un altro nome per la stessa istruzione.</li>
+<li><code>SNE A, B</code>: salta se sono diversi.</li>
+<li><code>SLT A, B</code>: salta se A è minore di B.</li>
+</ul>
+<pre class="rc">
+        SEQ.I   @pr, val      ; la risposta è uguale a val? allora salta la riga dopo
+        JMP     loop          ; no: questo lavoro è fallito
+ok      JMP     loop          ; sì: un lavoro riuscito
+</pre>
+<p>È il controllo con cui T1 verifica che il servizio gli abbia risposto giusto.</p>
+
+<h3>Moltiplicarsi: <code>SPL</code></h3>
+<p><code>SPL A</code> crea un <b>nuovo processo</b> che parte dalla casella A; quello vecchio prosegue con la casella dopo. Da quel momento il programma ha due «dita». Attenzione: il programma ha sempre <b>un solo turno per ciclo</b>, e i suoi processi se lo dividono a rotazione. Con due processi, ciascuno esegue un'istruzione ogni due cicli. Un programma può avere al massimo 64 processi.</p>
+</div>
+
+<div class="wide">
+<div class="msim" data-size="12" data-title="SPL: due processi nello stesso programma" data-vars="a,b">
+<script type="text/redcode" data-name="Doppio" data-base="1" data-color="t5">
+        SPL     due           ; un nuovo processo partirà da "due"
+uno     ADD.AB  #1, a         ; il primo processo conta in a
+        JMP     uno
+due     ADD.AB  #1, b         ; il secondo conta in b
+        JMP     due
+a       DAT.F   #0, #0
+b       DAT.F   #0, #0
+</script>
+</div>
+</div>
+
+<div class="col">
+<div class="box idea"><span class="t">Perché i processi contano in battaglia</span>
+Uccidere un programma vuol dire uccidere <i>tutti</i> i suoi processi. Un programma con 64 processi sparsi è molto difficile da fermare. Per questo molti campioni Red del pilot cominciano con un <code>SPL</code>, e per questo Blue ha provato leggi contro chi crea troppi processi. Ma c'è un prezzo: T5, un inquilino onesto, vive di <code>SPL</code> (capitolo 6).</div>
+
+<h2>Tutto insieme: aspettare una risposta</h2>
+<p>Con <code>JMN</code> e <code>JMZ</code> due programmi possono parlarsi attraverso una casella. Qui la casella 0 fa da <code>FLAG</code>. Il «Cliente» mette FLAG = 1 e aspetta. Il «Servizio» aspetta che FLAG sia 1, fa il suo lavoro e rimette FLAG a 0. Il cliente vede lo 0, conta una risposta e ricomincia. È la casella postale di Landlord War in miniatura (capitolo 7).</p>
+</div>
+
+<div class="wide">
+<div class="msim" data-size="16" data-title="Due programmi che si parlano con un FLAG" data-vars="fatti">
+<script type="text/redcode" data-name="Cliente" data-base="2" data-color="t1">
+top     MOV.AB  #1, top-2     ; FLAG (la casella 0) <- 1: "ho una richiesta"
+wait    JMN.B   wait, top-2   ; aspetta finché FLAG non torna 0
+        ADD.AB  #1, fatti     ; una risposta ricevuta
+        JMP     top           ; e un'altra richiesta
+fatti   DAT.F   #0, #0
+</script>
+<script type="text/redcode" data-name="Servizio" data-base="10" data-color="svc">
+poll    JMZ.B   poll, poll-10 ; FLAG = 0? niente da fare: guarda ancora
+        MOV.AB  #0, poll-10   ; (qui farebbe il lavoro) poi FLAG <- 0: "ecco la risposta"
+        JMP     poll
+</script>
+<script type="text/x-cells">[{"a":0,"label":"FLAG","note":"la casella condivisa","color":"#a04fc4"}]</script>
+</div>
+</div>
+
+<div class="col">
+<p>Nota <code>top-2</code> e <code>poll-10</code>: sono due modi di indicare la stessa casella 0 partendo da programmi diversi. Ogni programma conosce solo le proprie etichette, quindi deve sapere a che distanza da sé sta la casella condivisa. Nell'arena questa distanza non si conosce in anticipo: la dà la directory cell.</p>
+
+<details class="more"><summary>Due stranezze di questo motore (per chi conosce già Core War)</summary>
+<p>Il motore di Landlord War è una traduzione del simulatore incluso nel progetto (di Rodrigo Setti), e ne tiene le particolarità. Le principali:</p>
+<ul>
+<li><b>I numeri nelle caselle caricate non si riducono modulo 8000.</b> Una casella caricata può contenere −1 o 12.000; solo gli indirizzi si calcolano modulo 8000. Quindi <code>SLT</code> vede −1 come minore di 0, mentre in Core War standard −1 sarebbe 7999. Le caselle mai caricate, invece, riducono i numeri che superano ±8000.</li>
+<li><b><code>SLT.I</code> e <code>SNE.I</code> confrontano per uguaglianza</b>, e <code>SNE.F</code> salta solo se <i>entrambi</i> i campi sono diversi.</li>
+</ul>
+<p>Il simulatore di questo tutorial fa le stesse cose, ed è il motivo per cui i risultati coincidono con quelli del motore Python.</p>
+</details>
+
+<div class="quiz"><div class="q">Che cosa fa <code>ADD.AB #5, x</code>?</div>
+<button class="opt">Copia 5 nel campo A di x.</button>
+<button class="opt" data-right>Aggiunge 5 al campo B di x.</button>
+<button class="opt">Aggiunge il campo B di x al numero 5.</button>
+<div class="why">Il numero 5 sta nel campo A dell'istruzione; <code>.AB</code> lo prende dal campo A e lo somma al campo B della destinazione.</div></div>
+
+<div class="quiz"><div class="q">Un programma ha 4 processi. Quante istruzioni esegue <i>in tutto</i> in 100 cicli?</div>
+<button class="opt">400</button>
+<button class="opt" data-right>100</button>
+<button class="opt">25</button>
+<div class="why">Un programma ha un turno per ciclo, qualunque sia il numero dei suoi processi: 100 istruzioni, 25 per processo.</div></div>
+
+<div class="box recap"><span class="t">In breve</span>
+<ul>
+<li>Il modificatore dice quali campi si usano: <code>.A .B .AB .BA .F .X</code> per i numeri, <code>.I</code> per tutta la casella.</li>
+<li><code>MOV.AB #n, x</code> scrive il numero <i>n</i> nel campo B di <code>x</code>; <code>ADD.AB #n, x</code> lo somma.</li>
+<li>Salti: <code>JMP</code> sempre, <code>JMZ</code> se zero, <code>JMN</code> se non zero, <code>DJN</code> toglie 1 e salta se non zero.</li>
+<li>Confronti: <code>SEQ SNE SLT</code> saltano la riga dopo se la condizione è vera.</li>
+<li><code>SPL</code> crea un processo; un programma ha comunque un solo turno per ciclo.</li>
+</ul></div>
+</div>
+
+<div class="col"><nav class="chapnav" id="chapnav"></nav>
+<p style="font-size:13px;color:var(--ink3);margin-top:30px">Tutorial per il progetto <code>cyber_kickoff</code> (LIUC). Il simulatore di queste pagine è il motore di Landlord War tradotto in JavaScript: dà gli stessi risultati, cella per cella.</p></div>
+</main>
+</div>
+</body>
+</html>

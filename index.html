@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Redcode da −10000 a eroe</title>
+<meta name="description" content="Un tutorial interattivo su Redcode, Core War e Landlord War: dalla memoria ad anello fino agli attacchi, alle difese e al pilot M8.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' rx='3' fill='%23dc2b2b'/><rect x='3' y='3' width='4' height='4' fill='%23fff'/><rect x='9' y='9' width='4' height='4' fill='%23fff'/></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/style.css">
+<script src="assets/js/engine.js"></script>
+<script src="assets/js/ui-core.js"></script>
+<script src="assets/js/msim.js"></script>
+<script src="assets/js/arena.js"></script>
+<script src="assets/js/lawlab.js"></script>
+</head>
+<body>
+<div class="topbar" id="topbar"></div>
+<div class="site">
+<aside class="side" id="side"></aside>
+<main>
+<div class="col hero">
+<div class="kicker">Tutorial interattivo · Core War · Landlord War</div>
+<h1>Redcode, da −10000 a eroe</h1>
+<p class="lead">Questo tutorial parte da zero, anzi da sotto zero: che cos'è una casella di memoria. Arriva fino a leggere, riga per riga, gli attacchi che Red ha evoluto nel pilot M8 e le leggi che Blue ha inventato per fermarli. Ogni idea ha un esempio che puoi eseguire passo per passo, con le frecce che mostrano dove punta ogni numero.</p>
+
+<div class="box idea"><span class="t">Perché esiste</span>
+La pagina del lineage (<code>docs/v1_lineage.html</code>) dà per scontato che tu sappia leggere Redcode. Righe come <code>MOV.B pf, pv</code> o <code>ADD.AB #pf-pv+6, pv</code> sembrano criptiche finché non si capisce una sola idea: <b>in Redcode ogni numero è una distanza dalla cella in cui sta scritto</b>. Il capitolo 2 è tutto su questo. Da lì in poi il resto si incastra.</div>
+
+<h2>Come usarlo</h2>
+<ul>
+<li><b>Leggi in ordine.</b> Ogni capitolo usa solo cose spiegate prima. Il numero accanto al titolo (−10000, −5000, … HERO) dice a che livello sei.</li>
+<li><b>Premi «Passo».</b> I simulatori piccoli eseguono un'istruzione alla volta e scrivono in italiano che cosa è successo: quale casella è stata letta, quale scritta, dove va il processo. «◀ indietro» torna al passo prima.</li>
+<li><b>Passa il mouse sui numeri.</b> Nei simulatori, i numeri <span class="fa-t">A</span> (arancione) e <span class="fb-t">B</span> (blu) di ogni riga mostrano con una freccia la casella a cui puntano.</li>
+<li><b>Gioca con l'arena.</b> Dal capitolo 6 in poi trovi battaglie vere di Landlord War: 8000 celle, il servizio, la casella postale, cinque inquilini, Red e le leggi di Blue. Puoi accendere e spegnere le leggi e guardare che cosa cambia.</li>
+</ul>
+
+<div class="box arena-note"><span class="t">Il simulatore è il motore vero</span>
+Le battaglie di queste pagine girano su una traduzione in JavaScript del ciclo di battaglia di Landlord War (<code>landlord_war/engine.py</code>). Lo stato iniziale di ogni battaglia è esportato dal motore Python, e uno script di controllo (<code>tools/check_engine.mjs</code>) verifica che alla fine di ogni battaglia il risultato sia identico: stesse richieste servite, stessi danni, stessi riavvii, stesso contenuto di tutte le 8000 celle. Quando una battaglia arriva alla fine, il visualizzatore te lo conferma.</div>
+</div>
+
+<div class="col">
+<h2>Il percorso</h2>
+<div class="part"><div class="ptitle">I · Le basi di Core War</div>
+<div class="map-grid">
+<a href="01-memoria.html"><span class="n">1 · −10000</span><span class="t">La memoria e il processo</span><span class="d">Un anello di 8000 caselle, che cosa c'è in una casella, un dito che legge un'istruzione alla volta.</span></a>
+<a href="02-distanze.html"><span class="n">2 · −5000</span><span class="t">Distanze, non indirizzi</span><span class="d">L'idea che sblocca tutto: ogni numero è una distanza. Etichette, puntatori, e perché copiare un puntatore lo rompe.</span></a>
+<a href="03-modi.html"><span class="n">3 · −2000</span><span class="t">I modi di indirizzamento</span><span class="d"><code>#</code> <code>$</code> <code>@</code> <code>*</code> <code>&lt;</code> <code>&gt;</code> <code>{</code> <code>}</code>: come un numero diventa una casella, e i puntatori che si spostano da soli.</span></a>
+<a href="04-istruzioni.html"><span class="n">4 · −1000</span><span class="t">Modificatori e istruzioni</span><span class="d">Quale campo si copia, si somma o si confronta. Le 16 istruzioni, con un esempio per ciascuna.</span></a>
+<a href="05-guerrieri.html"><span class="n">5 · −500</span><span class="t">Primi guerrieri</span><span class="d">L'Imp, il Dwarf, i processi multipli: i programmi classici, e il bombardiere che Red ha evoluto nel round 2.</span></a>
+</div></div>
+<div class="part"><div class="ptitle">II · L'arena di Landlord War</div>
+<div class="map-grid">
+<a href="06-arena.html"><span class="n">6 · 0</span><span class="t">La mappa dell'arena</span><span class="d">Chi vive nelle 8000 celle: il servizio, la casella postale, cinque inquilini, Red. E Blue, il padrone di casa.</span></a>
+<a href="07-casella.html"><span class="n">7 · 100</span><span class="t">La casella postale e il prelude</span><span class="d">Come un programma trova il servizio, e le 12 righe con cui ogni cliente costruisce i suoi puntatori.</span></a>
+<a href="08-servizio.html"><span class="n">8 · 300</span><span class="t">Dentro il servizio</span><span class="d">Come serve STORE, FILL, READ e CALL. Dove stanno table, work, ret e la cassaforte. I quattro bug.</span></a>
+</div></div>
+<div class="part"><div class="ptitle">III · Gli attacchi di Red</div>
+<div class="map-grid">
+<a href="09-stadio0.html"><span class="n">9 · 500</span><span class="t">Stadio 0: bombe e cassaforte</span><span class="d">R0.1, R0.2, R0.3: bombardare il codice, scrivere la cassaforte, farla scrivere al servizio.</span></a>
+<a href="10-attacchi-casella.html"><span class="n">10 · 1000</span><span class="t">Attacchi attraverso la casella</span><span class="d">Stack smash, CALL fuori tabella, iniezione, code reuse: far eseguire al servizio quello che vuole Red.</span></a>
+</div></div>
+<div class="part"><div class="ptitle">IV · Le difese di Blue</div>
+<div class="map-grid">
+<a href="11-leggi.html"><span class="n">11 · 2000</span><span class="t">Le leggi della macchina</span><span class="d">ON evento IF condizione THEN azione. Come si legge una legge, quanto costa, e un laboratorio per scriverne.</span></a>
+<a href="12-difese.html"><span class="n">12 · 3000</span><span class="t">Le difese, una per una</span><span class="d">Code lock, riavvio, recinto, CFI, DEP, canary, tag: ciascuna contro l'attacco che ferma, nell'arena.</span></a>
+<a href="13-arbitro.html"><span class="n">13 · 4000</span><span class="t">L'arbitro e il punteggio</span><span class="d">Come si misura il danno, quanto costano le leggi, che cosa premia l'evoluzione. E il difetto che il pilot ha scoperto.</span></a>
+</div></div>
+<div class="part"><div class="ptitle">V · Evoluzione e pilot</div>
+<div class="map-grid">
+<a href="14-evoluzione.html"><span class="n">14 · 6000</span><span class="t">Come evolvono Red e Blue</span><span class="d">Mutazioni, round, campioni. Perché il codice evoluto sembra spazzatura, e come leggerlo lo stesso.</span></a>
+<a href="15-pilot.html"><span class="n">15 · 8000</span><span class="t">Il pilot, round per round</span><span class="d">Il replicatore e la trappola di lettura, il bombardiere, lo scrittore silenzioso, il blocco dei salti, il round 42.</span></a>
+<a href="16-lineage.html"><span class="n">16 · HERO</span><span class="t">Rileggere il lineage</span><span class="d">Una guida alla pagina del lineage, sezione per sezione, con i rimandi ai capitoli.</span></a>
+</div></div>
+<p style="margin-top:22px">C'è anche un <a href="glossario.html">glossario</a> con tutte le parole tecniche, in italiano e in inglese.</p>
+</div>
+
+<div class="col"><nav class="chapnav" id="chapnav"></nav>
+<p style="font-size:13px;color:var(--ink3);margin-top:30px">Tutorial per il progetto <code>cyber_kickoff</code> (LIUC). Il simulatore di queste pagine è il motore di Landlord War tradotto in JavaScript: dà gli stessi risultati, cella per cella.</p></div>
+</main>
+</div>
+</body>
+</html>
